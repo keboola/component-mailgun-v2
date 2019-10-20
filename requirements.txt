@@ -1,1 +1,3 @@
-https://bitbucket.org/kds_consulting_team/keboola-python-util-lib/get/0.2.5.zip#egg=kbc
+https://bitbucket.org/kds_consulting_team/keboola-python-util-lib/get/0.2.4.zip#egg=kbc
+logging_gelf==0.0.18
+datetime
