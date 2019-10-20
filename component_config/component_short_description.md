@@ -1,0 +1,1 @@
+Mailgun is a service for sending transactional emails.

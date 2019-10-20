@@ -6,11 +6,11 @@ import logging_gelf.formatters
 from mailgun.component import MailgunApp
 
 # Environment setup
-sys.tracebacklimit = 3
+sys.tracebacklimit = 0
 
 # Logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)-8s : [line:%(lineno)3s] %(message)s',
     datefmt="%Y-%m-%d %H:%M:%S")
 
