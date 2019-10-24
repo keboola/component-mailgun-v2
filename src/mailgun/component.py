@@ -92,7 +92,6 @@ class MailgunApp(KBCEnvHandler):
                                 if not os.path.basename(pathName).startswith('_tableattachment_')]
         self.varTableAttachments = [os.path.basename(pathName) for pathName in inputTables
                                     if os.path.basename(pathName).startswith('_tableattachment_')]
-
         self.varFiles = [os.path.basename(pathName) for pathName in inputFiles
                          if not os.path.basename(pathName).endswith('.manifest')]
 
@@ -116,12 +115,12 @@ class MailgunApp(KBCEnvHandler):
 
                 sys.exit(1)
 
-    def getLatestFile(self, files):
+    def getLatestFile(self, listOfFilePaths):
 
         maxFilename = ''
         maxTimestamp = '0'
 
-        for filePath in files:
+        for filePath in listOfFilePaths:
 
             manifestPath = filePath + '.manifest'
             with open(manifestPath) as manFile:
@@ -294,8 +293,6 @@ class MailgunApp(KBCEnvHandler):
 
         return msg
 
-# attachments
-
     def run(self):
 
         for table in self.varMailingLists:
@@ -305,9 +302,12 @@ class MailgunApp(KBCEnvHandler):
                 reader = csv.DictReader(mailingList)
                 for row in reader:
 
+                    logging.info("Starting sending process for %s." % row['email'])
                     msg = self.composeMessage(row)
 
                     if msg is None:
+
+                        logging.warning("Process for %s exited with errors." % row['email'])
                         continue
 
                     sc, js = self.client.sendMessage(msg)
@@ -322,7 +322,7 @@ class MailgunApp(KBCEnvHandler):
                             + ' +0000'
                         toWrite['specification'] = json.dumps(row)
                         toWrite['html_file_used'] = msg.html_file
-                        toWrite['attachments_sent'] = msg.attachments
+                        toWrite['attachments_sent'] = json.dumps(msg.attachments)
 
                         self.writerMessages.writerow(toWrite)
 
