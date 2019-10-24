@@ -17,36 +17,59 @@ Note that Mailgun is a paid service and is subject to [Mailgun's Terms Of Servic
 
 [TOC]
 
-## <a name="heading2">Heading 2</a>
+## heading 2
 
 fafaf
+
 gfasd
+
 asdas
+
 dasfasfgs
+
 fasdasd
+
 agasdsadag
 
+
 asdasda
+
 gfasd
+
+
 asgas
+
 dsad
+
 gasd
+
 g
+
 gasfdgdfh
+
 adj
 
 j
+
 shd
+
 g
+
 d
+
 sdfa
+
 
 rfa
 
 sf
+
 asfa
+
 sf
 
 as
+
 fdas
-[link](#a-name%22heading2%22heading-2a)
+
+[link](#heading-2)
