@@ -17,8 +17,7 @@ KEY_DOMAIN_REGION = 'domainRegion'
 KEY_FROM_NAME = 'fromName'
 KEY_FROM_EMAIL = 'fromEmail'
 
-MANDATORY_PARAMETERS = [KEY_API_TOKEN,
-                        KEY_DOMAIN_NAME, KEY_DOMAIN_REGION, KEY_FROM_NAME]
+MANDATORY_PARAMETERS = [KEY_API_TOKEN, KEY_DOMAIN_NAME, KEY_DOMAIN_REGION]
 
 MESSAGES_FIELDS = ['message_id', 'date', 'specification',
                    'html_file_used', 'attachments_sent']
@@ -47,7 +46,7 @@ class MailgunApp(KBCEnvHandler):
         self.paramToken = self.cfg_params[KEY_API_TOKEN]
         self.paramDomain = self.cfg_params[KEY_DOMAIN_NAME]
         self.paramRegion = self.cfg_params[KEY_DOMAIN_REGION]
-        self.paramFromName = self.cfg_params[KEY_FROM_NAME]
+        self.paramFromName = self.cfg_params.get(KEY_FROM_NAME)
         self.paramFromEmail = self.cfg_params.get(KEY_FROM_EMAIL, 'postmaster')
 
         self.files_in_path = os.path.join(self.data_path, 'in', 'files')
@@ -198,9 +197,15 @@ class MailgunApp(KBCEnvHandler):
     def composeMessage(self, rowDict):
 
         msg = MailgunMessage()
-        msg.email = rowDict['email']
-        msg.subject = rowDict['subject']
-        msg.text = rowDict.get('text', '').strip()
+        msg.email = rowDict['email'].strip()
+        msg.subject = rowDict['subject'].strip()
+        textString = rowDict.get('text', '').strip()
+
+        for key in rowDict:
+
+            textString = textString.replace(f'{{{{{key}}}}}', rowDict[key])
+
+        msg.text = textString
 
         if rowDict.get('delivery_time', '').strip() != '':
             msg.delivery_time = rowDict['delivery_time']
@@ -230,7 +235,7 @@ class MailgunApp(KBCEnvHandler):
 
             if pathHtml == '':
 
-                logging.warn("Could not locate html teplate %s." % htmlFile)
+                logging.warn("Could not locate html template %s." % htmlFile)
                 self.writerErrors.writerow({'date': self.getUtcTime(),
                                             'specification': json.dumps(rowDict),
                                             'error': 'TEMPLATE_NOT_FOUND_ERROR',

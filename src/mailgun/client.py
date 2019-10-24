@@ -30,7 +30,12 @@ class MailgunClient(HttpClientBase):
 
         super().__init__(BASE_URL, auth=('api', paramToken))
         self._validateAuthentication()
-        self.paramFromId = ' '.join([paramFromName, f'<{paramFromEmail}@{paramDomain}>'])
+
+        if paramFromName is None:
+            self.paramFromId = f'{paramFromEmail}@{paramDomain}'
+
+        else:
+            self.paramFromId = ' '.join([paramFromName, f'<{paramFromEmail}@{paramDomain}>'])
 
     def _validateAuthentication(self):
 
@@ -86,7 +91,8 @@ class MailgunClient(HttpClientBase):
         reqFiles = []
         for path in msgObject.attachments:
 
-            reqFiles += [('attachment', (os.path.basename(path), open(path, 'rb').read()))]
+            reqFiles += [('attachment', (os.path.basename(path).replace('_tableattachment_', ''),
+                         open(path, 'rb').read()))]
 
         logging.debug("Attachments:")
         logging.debug(reqFiles)
