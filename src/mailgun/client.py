@@ -43,8 +43,7 @@ class MailgunClient(HttpClientBase):
         reqHeaders = {'accept': 'application/json'}
         reqParams = {'limit': 1}
 
-        validationRequest = self.get_raw(
-            reqUrl, headers=reqHeaders, params=reqParams)
+        validationRequest = self.get_raw(reqUrl, headers=reqHeaders, params=reqParams)
         _valSc, _valJs = validationRequest.status_code, validationRequest.json()
 
         if _valSc == 200:
@@ -53,10 +52,8 @@ class MailgunClient(HttpClientBase):
 
         else:
 
-            logging.error(
-                "Authentication was not successful. Please check the credentials.")
-            logging.error("Response received: %s - %s." %
-                          (_valSc, _valJs['message']))
+            logging.error("Authentication was not successful. Please check the credentials.")
+            logging.error("Response received: %s - %s." % (_valSc, _valJs['message']))
             sys.exit(1)
 
     def sendMessage(self, msgObject):
@@ -70,19 +67,15 @@ class MailgunClient(HttpClientBase):
         }
 
         if msgObject.delivery_time is not None:
-
             reqBody['o:deliverytime'] = msgObject.delivery_time
 
         if msgObject.cc is not None:
-
             reqBody['cc'] = msgObject.cc
 
         if msgObject.bcc is not None:
-
             reqBody['bcc'] = msgObject.bcc
 
         if msgObject.tags != []:
-
             reqBody['o:tag'] = msgObject.tags
 
         logging.debug("Body:")
@@ -92,10 +85,10 @@ class MailgunClient(HttpClientBase):
         for path in msgObject.attachments:
 
             reqFiles += [('attachment', (os.path.basename(path).replace('_tableattachment_', ''),
-                         open(path, 'rb').read()))]
+                                         open(path, 'rb').read()))]
 
-        logging.debug("Attachments:")
-        logging.debug(reqFiles)
+        # logging.debug("Attachments:")
+        # logging.debug(reqFiles)
 
         reqUrl = os.path.join(self.base_url, 'messages')
         reqSendMessage = self.post_raw(url=reqUrl, files=reqFiles, data=reqBody)

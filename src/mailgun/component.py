@@ -6,10 +6,15 @@ import logging
 import os
 import re
 import sys
+import time
+from hashlib import md5
 from kbc.env_handler import KBCEnvHandler
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
+APP_VERSION = '0.0.4'
+LOG_LEVEL = 'DEBUG'
+MAX_MESSAGE_SIZE = 25 * 1024 ** 2
 
 KEY_API_TOKEN = '#apiToken'
 KEY_DOMAIN_NAME = 'domainName'
@@ -22,8 +27,8 @@ MANDATORY_PARAMETERS = [KEY_API_TOKEN, KEY_DOMAIN_NAME, KEY_DOMAIN_REGION]
 MESSAGES_FIELDS = ['message_id', 'date', 'specification',
                    'html_file_used', 'attachments_sent']
 MESSAGES_PK = ['message_id']
-ERRORS_FIELDS = ['date', 'specification', 'error', 'error_message']
-ERRORS_PK = []
+ERRORS_FIELDS = ['request_id', 'timestamp', 'specification', 'error', 'error_message']
+ERRORS_PK = ['request_id']
 
 REQUIRED_COLUMNS_HTML = ['email', 'subject', 'html_file']
 REQUIRED_COLUMNS_TEXT = ['email', 'subject', 'text']
@@ -40,7 +45,9 @@ class MailgunApp(KBCEnvHandler):
 
     def __init__(self):
 
-        super().__init__(MANDATORY_PARAMETERS)
+        super().__init__(MANDATORY_PARAMETERS, log_level=LOG_LEVEL)
+
+        logging.info(f"Running component version {APP_VERSION}.")
         self.validate_config(MANDATORY_PARAMETERS)
 
         self.paramToken = self.cfg_params[KEY_API_TOKEN]
@@ -60,7 +67,7 @@ class MailgunApp(KBCEnvHandler):
         self.writerMessages = MailgunWriter(dataPath=self.data_path, tableName='messages', tableFields=MESSAGES_FIELDS,
                                             primaryKeys=MESSAGES_PK, incremental=True)
         self.writerErrors = MailgunWriter(dataPath=self.data_path, tableName='errors', tableFields=ERRORS_FIELDS,
-                                          primaryKeys=ERRORS_PK, incremental=False)
+                                          primaryKeys=ERRORS_PK, incremental=True)
 
     def checkParameters(self):
 
@@ -84,8 +91,11 @@ class MailgunApp(KBCEnvHandler):
         globTables = os.path.join(self.tables_in_path, '*.csv')
         globFiles = os.path.join(self.files_in_path, '*')
         inputTables = glob.glob(globTables)
-        inputFiles = [os.path.basename(pathName)
-                      for pathName in glob.glob(globFiles)]
+        inputFiles = [os.path.basename(pathName) for pathName in glob.glob(globFiles)]
+
+        if len(inputTables) == 0:
+            logging.error("No input tables specified.")
+            sys.exit(1)
 
         self.varMailingLists = [pathName for pathName in inputTables
                                 if not os.path.basename(pathName).startswith('_tableattachment_')]
@@ -107,8 +117,7 @@ class MailgunApp(KBCEnvHandler):
             if setDiffHtml != set() and setDiffText != set():
 
                 logging.error(' '.join(["Missing mandatory columns",
-                                        "in the mailing input table \"%s\"." % os.path.basename(
-                                            tablePath),
+                                        "in the mailing input table \"%s\"." % os.path.basename(tablePath),
                                         "Required columns are ['email', 'subject'] and at least",
                                         "one of ['html_file', 'text']"]))
 
@@ -164,48 +173,44 @@ class MailgunApp(KBCEnvHandler):
 
         else:
 
-            globAttachment = os.path.join(
-                self.files_in_path, '*') + attachmentName
+            globAttachment = os.path.join(self.files_in_path, '*') + attachmentName
             matchedAttachment = glob.glob(globAttachment)
 
             if len(matchedAttachment) == 1:
-
                 return matchedAttachment[0]
 
             elif len(matchedAttachment) == 0:
-
                 return ''
 
             elif len(matchedAttachment) > 1:
-
                 return self.getLatestFile(matchedAttachment)
 
     def getUtcTime(self):
 
-        return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S +0000')
+        return str(int(time.time() * 1000))
 
     def getTableAttachment(self, tableAttachmentName):
 
         if tableAttachmentName in self.varTableAttachments:
-
             return os.path.join(self.tables_in_path, tableAttachmentName)
 
         else:
-
             return ''
 
     def composeMessage(self, rowDict):
 
         msg = MailgunMessage()
         msg.email = rowDict['email'].strip()
-        msg.subject = rowDict['subject'].strip()
+        subjectString = rowDict['subject'].strip()
         textString = rowDict.get('text', '').strip()
 
         for key in rowDict:
 
             textString = textString.replace(f'{{{{{key}}}}}', rowDict[key])
+            subjectString = subjectString.replace(f'{{{{{key}}}}}', rowDict[key])
 
         msg.text = textString
+        msg.subject = subjectString
 
         if rowDict.get('delivery_time', '').strip() != '':
             msg.delivery_time = rowDict['delivery_time']
@@ -235,11 +240,31 @@ class MailgunApp(KBCEnvHandler):
 
             if pathHtml == '':
 
-                logging.warn("Could not locate html template %s." % htmlFile)
-                self.writerErrors.writerow({'date': self.getUtcTime(),
-                                            'specification': json.dumps(rowDict),
+                _utc = self.getUtcTime()
+                _specification = json.dumps(rowDict)
+
+                logging.warn(f"Could not locate html template {htmlFile}.")
+                self.writerErrors.writerow({'timestamp': _utc,
+                                            'specification': _specification,
                                             'error': 'TEMPLATE_NOT_FOUND_ERROR',
-                                            'error_message': "Could not locate html file %s." % htmlFile})
+                                            'error_message': f"Could not locate html file {htmlFile}.",
+                                            'request_id': md5('|'.join([_utc, _specification]).encode())
+                                            .hexdigest()})
+
+                return None
+
+            elif os.path.splitext(pathHtml)[1] != '.html':
+
+                _utc = self.getUtcTime()
+                _specification = json.dumps(rowDict)
+
+                logging.warn(f"Invalid html template {htmlFile}.")
+                self.writerErrors.writerow({'timestamp': _utc,
+                                            'specification': _specification,
+                                            'error': 'INVALID_TEMPLATE_ERROR',
+                                            'error_message': f"Template {pathHtml} for {htmlFile} is not an html file.",
+                                            'request_id': md5('|'.join([_utc, _specification]).encode())
+                                            .hexdigest()})
 
                 return None
 
@@ -247,8 +272,7 @@ class MailgunApp(KBCEnvHandler):
 
                 htmlString = open(pathHtml).read()
                 for key in rowDict:
-                    htmlString = htmlString.replace(
-                        f'{{{{{key}}}}}', rowDict[key])
+                    htmlString = htmlString.replace(f'{{{{{key}}}}}', rowDict[key])
 
                 msg.html = htmlString
                 msg.html_file = pathHtml
@@ -281,10 +305,15 @@ class MailgunApp(KBCEnvHandler):
                 idx = attachmentsPaths.index('')
                 attName = attachmentsSplit[idx]
                 logging.warn("Could not locate file %s." % attName)
-                self.writerErrors.writerow({'date': self.getUtcTime(),
-                                            'specification': json.dumps(rowDict),
+
+                _utc = self.getUtcTime()
+                _specification = json.dumps(rowDict)
+                self.writerErrors.writerow({'timestamp': _utc,
+                                            'specification': _specification,
                                             'error': 'ATTACHMENT_NOT_FOUND_ERROR',
-                                            'error_message': 'Could not locate attachment %s.' % attName})
+                                            'error_message': f'Could not locate attachment {attName}.',
+                                            'request_id': md5('|'.join([_utc, _specification]).encode())
+                                            .hexdigest()})
 
                 return None
 
@@ -298,6 +327,24 @@ class MailgunApp(KBCEnvHandler):
 
         return msg
 
+    def getMessageSize(self, msgObject):
+
+        totalMsgSize = 0
+
+        if msgObject is None:
+            return None
+
+        for key, value in vars(msgObject).items():
+
+            if key == 'attachments':
+                for path in value:
+                    totalMsgSize += os.path.getsize(path)
+
+            else:
+                totalMsgSize += sys.getsizeof(value)
+
+            return totalMsgSize
+
     def run(self):
 
         for table in self.varMailingLists:
@@ -309,10 +356,26 @@ class MailgunApp(KBCEnvHandler):
 
                     logging.info("Starting sending process for %s." % row['email'])
                     msg = self.composeMessage(row)
+                    msgSize = self.getMessageSize(msg)
 
                     if msg is None:
 
                         logging.warning("Process for %s exited with errors." % row['email'])
+                        continue
+
+                    elif msgSize > MAX_MESSAGE_SIZE:
+
+                        msgSizeMB = msgSize / 1024 ** 2
+                        logging.warning("Process for %s exited with errors." % row['email'])
+                        _utc = self.getUtcTime()
+                        _specification = json.dumps(row)
+                        self.writerErrors.writerow({'timestamp': _utc,
+                                                    'specification': _specification,
+                                                    'error': 'EMAIL_TOO_LARGE_ERROR',
+                                                    'error_message': "Email exceeded max. size of 25MB. " +
+                                                    f"Total email size: {msgSizeMB}MB.",
+                                                    'request_id': md5('|'.join([_utc, _specification]).encode())
+                                                    .hexdigest()})
                         continue
 
                     sc, js = self.client.sendMessage(msg)
@@ -322,9 +385,8 @@ class MailgunApp(KBCEnvHandler):
                         toWrite = {}
 
                         toWrite['message_id'] = js['id'].replace('<', '').replace('>', '')
-                        toWrite['date'] = datetime.datetime.strptime(toWrite['message_id'].split('.')[0],
-                                                                     '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S') \
-                            + ' +0000'
+                        toWrite['date'] = int(datetime.datetime.strptime(toWrite['message_id'].split('.')[0],
+                                                                         '%Y%m%d%H%M%S').timestamp() * 1000)
                         toWrite['specification'] = json.dumps(row)
                         toWrite['html_file_used'] = msg.html_file
                         toWrite['attachments_sent'] = json.dumps(msg.attachments)
@@ -333,7 +395,13 @@ class MailgunApp(KBCEnvHandler):
 
                     else:
 
-                        self.writerErrors.writerow({'date': self.getUtcTime(),
-                                                    'specification': json.dumps(row),
+                        logging.warn(f"There were some errors sending email to {row['email']}.")
+
+                        _utc = self.getUtcTime()
+                        _specification = json.dumps(row)
+                        self.writerErrors.writerow({'timestamp': _utc,
+                                                    'specification': _specification,
                                                     'error': 'SEND_ERROR',
-                                                    'error_message': js['message']})
+                                                    'error_message': js['message'],
+                                                    'request_id': md5('|'.join([_utc, _specification]).encode())
+                                                    .hexdigest()})
