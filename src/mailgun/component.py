@@ -12,7 +12,7 @@ from kbc.env_handler import KBCEnvHandler
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
-APP_VERSION = '0.1.0'
+APP_VERSION = '0.1.1'
 LOG_LEVEL = 'INFO'
 MAX_MESSAGE_SIZE = 25 * 1024 ** 2
 
@@ -24,10 +24,11 @@ KEY_FROM_EMAIL = 'fromEmail'
 
 MANDATORY_PARAMETERS = [KEY_API_TOKEN, KEY_DOMAIN_NAME, KEY_DOMAIN_REGION]
 
-MESSAGES_FIELDS = ['message_id', 'date', 'specification',
+MESSAGES_FIELDS = ['message_id', 'timestamp', 'specification',
                    'html_file_used', 'attachments_sent']
 MESSAGES_PK = ['message_id']
-ERRORS_FIELDS = ['request_id', 'timestamp', 'specification', 'error', 'error_message']
+ERRORS_FIELDS = ['request_id', 'timestamp', 'specification',
+                 'error', 'error_message']
 ERRORS_PK = ['request_id']
 
 REQUIRED_COLUMNS_HTML = ['email', 'subject', 'html_file']
