@@ -12,14 +12,14 @@
             "type": "string",
             "format": "password",
             "title": "API Key",
-            "description": "API key for authentication purposes. See <a href='https://help.mailgun.com/hc/en-us/articles/203380100-Where-Can-I-Find-My-API-Key-and-SMTP-Credentials-'>Mailgun documentation</a> for more information.",
+            "description": "API key for authentication purposes. See <a target='_blank' href='https://help.mailgun.com/hc/en-us/articles/203380100-Where-Can-I-Find-My-API-Key-and-SMTP-Credentials-'>Mailgun documentation</a> for more information.",
             "propertyOrder": 100,
             "minLength": 1
         },
         "domainName": {
             "type": "string",
             "title": "Domain",
-            "description": "Mailgun domain. Either sandbox or production version.",
+            "description": "Mailgun domain; either sandbox or production version.</br>If sandbox domain is used, please make sure, that all recipients are registered as <a target='_blank' href='https://help.mailgun.com/hc/en-us/articles/217531258-Authorized-Recipients'>authorized recipients</a>.",
             "propertyOrder": 200,
             "minLength": 1
         },
@@ -44,8 +44,8 @@
         },
         "fromEmail": {
             "type": "string",
-            "title": "Sender's Local part",
-            "description": "Local part of sender's email",
+            "title": "Sender's Local Part of Address",
+            "description": "Local part of sender's email. Allows customization of the first part of sending email address.",
             "propertyOrder": 500
         }
     }

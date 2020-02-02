@@ -13,20 +13,19 @@ class MailgunClient(HttpClientBase):
 
         if paramRegion not in SUPPORTED_REGIONS:
 
-            logging.error("Unknown region %s. Allowed values are: %s." % (paramRegion, SUPPORTED_REGIONS))
+            logging.error(f"Unknown region {paramRegion}. Allowed values are: {SUPPORTED_REGIONS}.")
             sys.exit(1)
 
         else:
 
             if paramRegion == 'US':
-
-                BASE_URL = os.path.join(
-                    'https://api.mailgun.net/v3', paramDomain)
+                BASE_URL = os.path.join('https://api.mailgun.net/v3', paramDomain)
 
             elif paramRegion == 'EU':
+                BASE_URL = os.path.join('https://api.eu.mailgun.net/v3', paramDomain)
 
-                BASE_URL = os.path.join(
-                    'https://api.eu.mailgun.net/v3', paramDomain)
+            else:
+                pass
 
         super().__init__(BASE_URL, auth=('api', paramToken))
         self._validateAuthentication()

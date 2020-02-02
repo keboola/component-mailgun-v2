@@ -12,9 +12,9 @@ from kbc.env_handler import KBCEnvHandler
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
-APP_VERSION = '0.1.1'
+APP_VERSION = '0.1.2'
 LOG_LEVEL = 'INFO'
-MAX_MESSAGE_SIZE = 25 * 1024 ** 2
+MAX_MESSAGE_SIZE = 24.9 * 1024 ** 2
 
 KEY_API_TOKEN = '#apiToken'
 KEY_DOMAIN_NAME = 'domainName'
@@ -75,7 +75,7 @@ class MailgunApp(KBCEnvHandler):
         if 'sandbox' in self.paramDomain:
 
             logging.warn(' '.join(["Using sandbox domain. Please, make sure all of the recipients are registered as",
-                                   "authorized recipients. For more information, please, refer to",
+                                   "authorized recipients. For more information, please refer to",
                                    "https://help.mailgun.com/hc/en-us/articles/217531258-Authorized-Recipients."]))
 
         LOCAL_PART_REGEX = r"[^\w\.!#$%&'*+-/=?^_`{\|}~]|[.]{2,}"
@@ -83,8 +83,7 @@ class MailgunApp(KBCEnvHandler):
 
         if len(localPartRgx) != 0:
 
-            logging.error(
-                "Unsupported characters in local part of email: %s" % localPartRgx)
+            logging.error("Unsupported characters in local part of email: %s" % localPartRgx)
             sys.exit(1)
 
     def checkInputTablesAndFiles(self):
