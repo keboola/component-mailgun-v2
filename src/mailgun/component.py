@@ -386,8 +386,8 @@ class MailgunApp(KBCEnvHandler):
                         toWrite = {}
 
                         toWrite['message_id'] = js['id'].replace('<', '').replace('>', '')
-                        toWrite['date'] = int(datetime.datetime.strptime(toWrite['message_id'].split('.')[0],
-                                                                         '%Y%m%d%H%M%S').timestamp() * 1000)
+                        toWrite['timestamp'] = int(datetime.datetime.strptime(toWrite['message_id'].split('.')[0],
+                                                                              '%Y%m%d%H%M%S').timestamp() * 1000)
                         toWrite['specification'] = json.dumps(row)
                         toWrite['html_file_used'] = msg.html_file
                         toWrite['attachments_sent'] = json.dumps(msg.attachments)
