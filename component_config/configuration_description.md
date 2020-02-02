@@ -1,12 +1,212 @@
-* **Token** - Password or API key for Mailgun.
-* **Domain** - Domain, from which the mail should be sent. See [How to send mail](https://documentation.mailgun.com/en/latest/quickstart-sending.html#how-to-start-sending-email).
-* **Region** - one of US/EU.
-* **From** - Specifiec in whose name should the mail be sent.
-* **Input Table** with records of emails. Each row will be sent as separate email, to separate address, name, body, etc. specified in the input table. Table **must include** following columns:
-    * `email` - Email address to which an email will be sent.
-    * `name` - Name of the person. Will be used in creating an email handle. Can be left blank.
-    * `html_file` - Name of the file in KBC storage to be used as html body, in format `KBCID_filename.ext`, where `KBCID` is ID of the file in KBC storage, `filename.ext` is the name and extension of given file. If no file matches the specification,
-    * `subject` - Subject of an email.
-    * `attachments` - String separated names of files in KBC storage to be attached to the email. Error is raised, if files are not inputted correctly or are not in the folder. Attachments must be in format `KBCID_filename.ext`, where `KBCID` is ID of the file in KBC storage, `filename.ext` is the name and extension of given file.
-    * `delivery` - Scheduled delivery time in format `YYYY-MM-DD HH:MM:SS ±ZZZZ` (e.g. `2019-02-28 16:00:00 +0000` or `2018-03-17 09:00:00 -0900`). If inputted correctly, an email will be delivered at this time. Otherwise, an email will be delivered straightaway.
-    * `**kwargs` - Other columns. Each of these columns can be used to fill in the html body using standard Python string handlers. For example, if the html body has `Weather is %(weather)s, %(name)s.` in it, the handles `%(weather)s` and `%(name)s` will be replaced by their respective values in column `weather` and `name` from the input table, thus producing (e.g.) `Weather is nice, John. See more information in example below.`
+### Changes from previous version
+
+With a new version of Mailgun component, there were some changes, which make this version non-backwards compatible and hence some effort is required to migrate. Major changes include:
+
+1. A region can be specified in the configuration (see [Parameters](https://bitbucket.org/kds_consulting_team/kds-team.app-mailgun-v2/src/master/README.md#markdown-header-parameters))
+2. Changed column names for input table and support of more Mailgun features (see [Mailing list](https://bitbucket.org/kds_consulting_team/kds-team.app-mailgun-v2/src/master/README.md#markdown-header-mailing-list))
+3. Sending tabular attachments straight from Keboola storage (see [Table input mapping](https://bitbucket.org/kds_consulting_team/kds-team.app-mailgun-v2/src/master/README.md#markdown-header-table-input-mapping))
+4. Improved specification of attachments and templates and automatic selection of latest available file (see [Path specification to template or file attachment](https://bitbucket.org/kds_consulting_team/kds-team.app-mailgun-v2/src/master/README.md#markdown-header-path-specification-to-template-or-file-attachment))
+5. Subject, plain-text or html template are now customized using `{{COLUMN_NAME}}` tags, instead of `%(COLUMN_NAME)s` as before (see [Email customization](https://bitbucket.org/kds_consulting_team/kds-team.app-mailgun-v2/src/master/README.md#markdown-header-email-customization))
+
+### Configuration
+
+The configuration of the component is done via a set of parameters, an input table and optional files. This, and all of the functionalities of the component, will be covered in this section. The documentation will extensively use the provided [sample configuration](https://bitbucket.org/kds_consulting_team/kds-team.app-mailgun-v2/src/master/component_config/sample-config/) to showcase the behavior of the application and how to cover special cases.
+
+#### Parameters
+
+The component takes a total of 5 parameters. Four of the parameters can be configured in the UI of Keboola, one is only configurable via API as its configuration is rather excess.
+
+The four required parameters are:
+
+- API Key 
+    - **type:** required
+    - **configuration name:** `#apiToken`
+    - **description:** An API key used to authenticate all requests against Mailgun API. If invalid value is provided, the application fails. More information on how to obtain the API key can be found in the [documentation](https://help.mailgun.com/hc/en-us/articles/203380100-Where-Can-I-Find-My-API-Key-and-SMTP-Credentials-).
+- Domain
+    - **type:** required
+    - **configuration name:** `domainName`
+    - **description:** The name of the domain, which will be used for delivering emails. You can find a list of all your domain in the *Control Panel* under the *Domains* tab. For sandbox domains, the domain is in form `sandbox[uniqueId].mailgun.org`, e.g. `sandbox15d3020e03ca4f8db4895fca549a8b3a.mailgun.org`. If the provided domain is not associated with the API key, or the domain is not found, the application will fail.
+- Region
+    - **type:** required
+    - **configuration name**: `domainRegion`
+    - **default:** US
+    - **description**: The region where the Mailgun account or domain is located. Available values are US (sending via [https://api.mailgun.net/](https://api.mailgun.net/)) or EU (sending via [https://api.eu.mailgun.net/](https://api.eu.mailgun.net/)). If incorrect region is specified, the application will fail due to domain not existing in the region.
+- Sender Name
+    - **type:** required
+    - **configuration name:** `fromName`
+    - **description:** The name which will be displayed as a sender of the messages from Mailgun. Can be left blank, in which case only the sender's email will be used as sender's identification.
+
+An optional parameter, configurable only via API is:
+
+- Sender Email
+    - **type:** optional
+    - **configuration name:** `fromEmail`
+    - **description:** The local part of the email address used to send messages.
+    - **default:** `postmaster`
+
+#### Mailing list
+
+Mailing list is the input table of emails, with other specified parameters, to which the messages will be sent. Mailing list can be configured in the table input mapping section, or must be stored in `/data/in/tables/` folder, and must not contain `_tableattachment_` in the destination name, as that is reserved for tabular attachments. 
+
+A combination of 3 columns is required and other columns could be used to specify the parameters of each message as well as customize the template.
+
+The three mandatory columns are:
+
+- `email`
+    - **description:** A single email address or a comma-separated list of email addresses, to which a message will be sent. The column is mandatory, thus if the column is not provided, the application will fail.
+    - **example:** `testy.mctesface@domain.com`; `sterling.archer@fx.com, mallory.archer@fx.com`
+- `subject`
+    - **description:** A mandatory column defining the subject of the message.
+    - **example:** `Testing email`; `New job announcement`
+- `html_file` or `text`
+    - **description:** Column `html_file` defines the file name of the html template, which shall be used as the message body (see section **Customization and attachments**). Column `text` defines the plain text body of the message. Either of the columns or both can be provided. If both columns have a valid value, by default Mailgun API prioritizes the html content over plain text content. Both of the columns can be customized with additional parameters (more on that in section **Customization and attachments**).
+    - **example:**
+        - `template.html`; `questionnaire.html`
+        - `A very warm welcome!`; `This is a sample message.`
+
+In addition to three (four) mandatory columns, a set of optional columns can be provided to alter the behavior of the message. All of these columns have a blank default value. These columns are:
+
+- `delivery_time`
+    - **description:** A timestamp in **RFC 2822** format, i.e. format `Fri, 25 Oct 2019 19:00:00 +0200`. If undefined or left blank, the message will be delivered instantly. The email delivery can't be scheduled more than three days in advance by design of the API.
+    - **Mailgun mapping:** `o:deliverytime`
+    - **example:** `Fri, 25 Oct 2019 19:00:00 +0200`; `Fri, 25 Oct 2019 17:00:00 GMT`
+    - **hints:**
+        - in Snowflake, the RFC 2282 format can be achieved using format `DY, DD MON YYYY HH24:MI:SS TZHTZM`
+        - in Python, the RFC 2282 format can be achieved using format `%a, %d %b %Y %H:%M:%S %z`
+- `cc`
+    - **description:** A single email address or a comma-separated list of email addresses, to which a copy of the email will be delivered.
+    - **Mailgun mapping:** `cc`
+    - **example:** same as `email`
+- `bcc`
+    - **description:** A single email address or a comma-separated list of email addresses, to which a blind copy of the email will be delivered.
+    - **Mailgun mapping:** `bcc`
+    - **example:** same as `email`
+- `tags`
+    - **description:** A single tag or a comma-separated list of tags, which will be attached to the image. Tags are very useful for tracking specific emails or campaigns. Up to 3 tags can be applied to a single message; if more than 3 are provided, only the first three in the list will be applied, by design of the API.
+    - **Mailgun mapping:** `o:tag`
+    - **example:** `abc`; `abc, 123, 567`
+- `attachments`
+    - **description:** A single file name or a comma-separated list of filenames, which will attached to a message. See section **Sending attachments** for more information on how to correctly specify attachments.
+    - **Mailgun mapping:** `attachments`
+    - **example:** `__tableattachment__data.csv`; `graph.png, 123456789_data.json`
+
+Besides all of the columns mentioned above, it is possible to specify additional columns which will be used to customize either the html template, or the plain text body of the message. In fact, any of the columns can be used for message body customization. More about customization is covered in **Customizing messages**.
+
+#### File input mapping
+
+Non-tabular files, such as html files, images, json, etc. can be used as attachments, or in case of html files as templates. In Keboola, all of these files must be properly mapped in *File input mapping* section, specifying the correct tags.
+
+![](https://bitbucket.org/kds_consulting_team/kds-team.app-mailgun-v2/raw/master/docs/file-input-mapping.png)
+
+All of the files are automatically stored in `/data/in/files/` folder.
+
+#### Table input mapping
+
+All tabular files from Keboola storage can be specified directly from Keboola's UI in the table input mapping section and must have a prefix `_tableattachment_`, otherwise they will be used as a mailing list; table without `_tableattachment_` prefix is not recognized as an attachment.
+
+![](https://bitbucket.org/kds_consulting_team/kds-team.app-mailgun-v2/raw/master/docs/table-input-mapping.png)
+
+All of the tables are automatically stored in `/data/in/tables/` folder.
+
+### Customization and attachments
+
+The Mailgun component is able to handle some forms of customizations for each email. Along with sending attachments from file and table storage, the component is able to send a customized html template for each email. **All templates must be stored in file storage (see section *File Input Mapping*) and attachments can be stored either in file storage, or if applicable in standard table storage.**
+
+In this section, a customization of templates as well as specifying attachments will be discussed. But firstly, let's start with how the component chooses files based on specification.
+
+#### Path specification to template or file attachment
+
+In the previous version of Mailgun, a template or file attachment (further referred to as a file) had to be specified by it's full name only. Mailgun component could not perform any kind of search for patterns in names (glob search). This, of course, poised a problem when sending files from Keboola storage, since each filename is preceeded by its identificator, which is unknown to the user prior to uploading the file. For files, which are static and only uploaded once (e.g. templates), this might not be a problem. However, for files which are generated each day and then sent via Mailgun, this poised a problem. Often, a structure of files, similar to the one below, was created in Keboola file storage and users needed an extra transformation to determine the latest file's name.
+
+```
+445515655_report.pdf    321312312_template.html
+446461182_report.pdf    760989809_template.html
+446461232_report.pdf    944598324_template.html
+451982978_report.pdf    131242341_logo.jpeg
+478942334_report.pdf    542342123_graph.png
+563242313_report.pdf    857923432_graph.png
+589321233_report.pdf    878080998_graph.png
+591233212_report.pdf    975763234_graph.png
+623421321_report.pdf    653423674_report.pdf
+```
+
+With a new version of Mailgun, users are offered a much improved experience of file specification. Files (both html templates and files used for attachments) can be specified using a "simple" file name, without the identificator and Mailgun application will automatically choose the latest file based on available metadata.
+
+For example, a following table with template and attachments can be specified.
+
+| html_file               | attachments|
+|-------------------------|------------|
+| template.html           | report.pdf |
+| 321312312_template.html | logo.jpeg  |
+
+In the first row, the component first matches all files using glob, with a pattern of `*template.html`, which would in this case result in 3 files. Afterwards, the latest file is determined by using metadata (manifests) resulting in final file `944598324_template.html`, which will be used as a template. In case of attachments, identicall process is performed.
+
+If you need to match a specific file precisely, you can do so by specifying its full name as is the case in the second row. Template `321312312_template.html` is one of the files present in the "environment" and is therefore used directly.
+
+#### Email customization
+
+Each email body can be specified either by a plain text (using column `text`) or by an html template (using column `html_file`). Mailgun component allows further customizations of the body (both plain text and html) and subject using special word tags. These word tags take a form of `{{COLUMN_NAME}}`, where `COLUMN_NAME` is a name of the column, with which value the tag should be replaced. 
+
+As an example, imagine, that a following input table is provided:
+
+| email                | subject                          | text                                                                             | name  | order_id |
+|----------------------|----------------------------------|----------------------------------------------------------------------------------|-------|----------|
+| testy@mctestface.com | Your order summary #{{order_id}} | Hello {{name}},   Summary of your order: Order ID: {{order_id}} Email: {{email}} | Testy | 12345678 |
+
+The component would read the contents of the plain text specified, and iterate over each column and replace the column tag `{{}}`, with its column value. In this case, an email would be sent with a following form:
+
+```
+To: testy@mctestface.com
+Subject: Your order summary #12345678
+
+Body:
+Hello Testy,
+
+Summary of your order:
+Order ID: 12345678
+Email: testy@mctestface.com
+```
+
+Note, that any of the attributes in the mailing list table can be used to fill subject, plain-text body, or html-template body. In case, a tag specified in the body of the email is not present in the input table, it will not be replaced. As an example, let's have a following html file `greetings.html`:
+
+```html
+<p>
+    <strong>
+        Hello {{name}},<br>
+    </strong>
+</p>
+<p>
+    Here's your order {{order_id}} of product {{product}}, it will arrive soon.
+</p>
+```
+
+and following input table:
+
+| email                | subject                          | html_file      | name  | order_id |
+|----------------------|----------------------------------|----------------|-------|----------|
+| testy@mctestface.com | Your order summary #{{order_id}} | greetings.html | Testy | 12345678 |
+
+Together, they will generate an email with the following form:
+
+```
+To: testy@mctestface.com
+Subject: Your order summary #12345678
+
+Body:
+Hello Testy,
+
+Here's your order 12345678 of product {{product}}, it will arrive soon.
+```
+
+#### Sending attachments
+
+Mailgun component allows to send attachments both, from storage and file storage. Note, that total size of email **must no exceed 25MB**, otherwise it will not be accepted by the API and will be returned. Component performs a strict check for size prior to sending and all over-size emails are recorded in results table.
+
+As discussed in previous sections, tabular attachments must have a suffix `_tableattachment_` and must be specified by their full name in the mailing list table. If multiple attachments are specified, their names must be separated by a comma. A combination of both tabular and file attachments is allowed, as long as they do not exceed 25MB.
+
+Examples of attachments specification include:
+
+```
+_tableattachment_table1.csv, graph.png, report.pdf
+131242341_logo.jpeg, _tableattachment_orders.csv
+```

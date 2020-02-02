@@ -1,0 +1,2 @@
+"message_id","date","specification","html_file_used","attachments_sent"
+"20200201132125.1.74AAB19741F2684B@sandbox15d3020e03ca4f8db4895fca549a8b3a.mailgun.org","1580563285000","{""ID"": ""1234"", ""name"": ""Testy McTestFace"", ""email"": ""testymctestface@gmail.com"", ""text"": """", ""subject"": ""Hello {{name}}!"", ""attachments"": ""_tableattachment_list_questionnaire.csv, i.png"", ""html_file"": ""questionnaire.html""}","/data/in/files/452610617_questionnaire.html","[""/data/in/tables/_tableattachment_list_questionnaire.csv"",""/data/in/files/i.png""]"

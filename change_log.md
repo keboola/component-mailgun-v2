@@ -1,3 +1,9 @@
+**0.1.0**
+Added configuration description
+Added long and short descriptions
+Tweaked documentation
+Added example configuration
+
 **0.0.4**
 Added check for emails larger than 25MB.
 Added documentation.

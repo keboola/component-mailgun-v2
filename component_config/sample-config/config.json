@@ -1,10 +1,11 @@
 {
   "parameters": {
-    "#apiToken": "ABCDEF-12345678",
-    "domainName": "my.domain.org",
+    "#apiToken": "<TOKEN>",
+    "domainName": "<DOMAIN_URL>",
     "domainRegion": "US",
-    "fromName": "Testy McTestFace",
+    "fromName": "Keboola Mailgun Integration",
     "fromEmail": "postmaster"
   },
-  "image_parameters": {}
+  "image_parameters": {},
+  "storage": {}
 }

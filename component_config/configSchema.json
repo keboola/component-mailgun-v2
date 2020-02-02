@@ -1,7 +1,12 @@
 {
     "title": "Parameters",
     "type": "object",
-    "required": ["#apiToken", "domainName", "domainRegion", "fromName"],
+    "required": [
+        "#apiToken",
+        "domainName",
+        "domainRegion",
+        "fromName"
+    ],
     "properties": {
         "#apiToken": {
             "type": "string",
@@ -20,7 +25,10 @@
         },
         "domainRegion": {
             "type": "string",
-            "enum": ["US", "EU"],
+            "enum": [
+                "US",
+                "EU"
+            ],
             "title": "Region",
             "description": "Region, where the domain is located.",
             "default": "US",
@@ -38,8 +46,7 @@
             "type": "string",
             "title": "Sender's Local part",
             "description": "Local part of sender's email",
-            "propertyOrder": 500,
-            "default": "postmaster"
+            "propertyOrder": 500
         }
     }
 }

@@ -1,0 +1,13 @@
+{
+    "id": 452610617,
+    "name": "questionnaire.html",
+    "created": "2018-10-05T15:05:22+0200",
+    "is_public": false,
+    "is_encrypted": true,
+    "is_sliced": false,
+    "tags": [
+        "app-mailgun"
+    ],
+    "max_age_days": 0,
+    "size_bytes": 2482
+}

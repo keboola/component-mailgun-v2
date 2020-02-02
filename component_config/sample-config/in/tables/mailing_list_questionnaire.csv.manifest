@@ -1,0 +1,71 @@
+{
+    "id": "out.c-main.mailing_list_questionnaire",
+    "uri": "https:\/\/connection.keboola.com\/v2\/storage\/tables\/out.c-main.mailing_list_questionnaire",
+    "name": "mailing_list_questionnaire",
+    "primary_key": [],
+    "created": "2019-02-12T18:17:55+0100",
+    "last_change_date": "2019-10-19T17:45:16+0200",
+    "last_import_date": "2019-07-10T10:20:30+0200",
+    "columns": [
+        "ID",
+        "name",
+        "email",
+        "html_file",
+        "subject",
+        "attachments",
+        "delivery"
+    ],
+    "metadata": [
+        {
+            "id": "113414602",
+            "key": "KBC.createdBy.component.id",
+            "value": "transformation",
+            "provider": "system",
+            "timestamp": "2019-02-12T18:18:07+0100"
+        },
+        {
+            "id": "113414603",
+            "key": "KBC.createdBy.configuration.id",
+            "value": "441004885",
+            "provider": "system",
+            "timestamp": "2019-02-12T18:18:07+0100"
+        },
+        {
+            "id": "113414604",
+            "key": "KBC.createdBy.configurationRow.id",
+            "value": "442488327",
+            "provider": "system",
+            "timestamp": "2019-02-12T18:18:07+0100"
+        },
+        {
+            "id": "113414605",
+            "key": "KBC.lastUpdatedBy.component.id",
+            "value": "transformation",
+            "provider": "system",
+            "timestamp": "2019-02-12T18:18:07+0100"
+        },
+        {
+            "id": "113414606",
+            "key": "KBC.lastUpdatedBy.configuration.id",
+            "value": "441004885",
+            "provider": "system",
+            "timestamp": "2019-02-12T18:18:07+0100"
+        },
+        {
+            "id": "113414607",
+            "key": "KBC.lastUpdatedBy.configurationRow.id",
+            "value": "442488327",
+            "provider": "system",
+            "timestamp": "2019-02-12T18:18:07+0100"
+        }
+    ],
+    "column_metadata": {
+        "ID": [],
+        "name": [],
+        "email": [],
+        "html_file": [],
+        "subject": [],
+        "attachments": [],
+        "delivery": []
+    }
+}

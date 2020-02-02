@@ -12,8 +12,8 @@ from kbc.env_handler import KBCEnvHandler
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
-APP_VERSION = '0.0.4'
-LOG_LEVEL = 'DEBUG'
+APP_VERSION = '0.1.0'
+LOG_LEVEL = 'INFO'
 MAX_MESSAGE_SIZE = 25 * 1024 ** 2
 
 KEY_API_TOKEN = '#apiToken'
