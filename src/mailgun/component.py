@@ -55,7 +55,8 @@ class MailgunApp(KBCEnvHandler):
         self.paramDomain = self.cfg_params[KEY_DOMAIN_NAME]
         self.paramRegion = self.cfg_params[KEY_DOMAIN_REGION]
         self.paramFromName = self.cfg_params.get(KEY_FROM_NAME)
-        self.paramFromEmail = self.cfg_params.get(KEY_FROM_EMAIL, 'postmaster')
+        self.paramFromEmail = self.cfg_params.get(KEY_FROM_EMAIL, 'postmaster') \
+            if self.cfg_params.get(KEY_FROM_EMAIL, 'postmaster') != '' else 'postmaster'
 
         self.files_in_path = os.path.join(self.data_path, 'in', 'files')
 
