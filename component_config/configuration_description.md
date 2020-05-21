@@ -89,6 +89,9 @@ In addition to three (four) mandatory columns, a set of optional columns can be 
     - **description:** A single file name or a comma-separated list of filenames, which will attached to a message. See section **Sending attachments** for more information on how to correctly specify attachments.
     - **Mailgun mapping:** `attachments`
     - **example:** `__tableattachment__data.csv`; `graph.png, 123456789_data.json`
+- `custom_fields`
+    - **description:** All other custom fields and headers which should be added to a message. Must be a valid JSON object. If the object passed is not a valid object, email sending is not halted. See [documentation](https://documentation.mailgun.com/en/latest/api-sending.html#sending) for all available options.
+    - **example:** `{"h:Reply-To": "reply_email@keboola.com"}`
 
 Besides all of the columns mentioned above, it is possible to specify additional columns which will be used to customize either the html template, or the plain text body of the message. In fact, any of the columns can be used for message body customization. More about customization is covered in **Customizing messages**.
 

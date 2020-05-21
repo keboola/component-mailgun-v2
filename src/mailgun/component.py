@@ -12,7 +12,7 @@ from kbc.env_handler import KBCEnvHandler
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
-APP_VERSION = '0.1.2'
+APP_VERSION = '0.1.3'
 LOG_LEVEL = 'INFO'
 MAX_MESSAGE_SIZE = 24.9 * 1024 ** 2
 
@@ -325,6 +325,22 @@ class MailgunApp(KBCEnvHandler):
         else:
 
             msg.attachments = []
+
+        if rowDict.get('custom_fields', '').strip() != '':
+            try:
+                _custom_fields = json.loads(rowDict.get('custom_fields', ''))
+
+                if isinstance(_custom_fields, dict) is False:
+                    _custom_fields = {}
+
+            except ValueError:
+                _custom_fields = None
+
+            finally:
+                msg.custom_fields = _custom_fields
+
+        else:
+            msg.custom_fields = None
 
         return msg
 

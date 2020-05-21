@@ -77,6 +77,9 @@ class MailgunClient(HttpClientBase):
         if msgObject.tags != []:
             reqBody['o:tag'] = msgObject.tags
 
+        if msgObject.custom_fields is not None:
+            reqBody = {**msgObject.custom_fields, **reqBody}
+
         logging.debug("Body:")
         logging.debug(reqBody)
 
