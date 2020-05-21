@@ -12,7 +12,7 @@ from kbc.env_handler import KBCEnvHandler
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
-APP_VERSION = '0.1.3'
+APP_VERSION = '0.1.4'
 LOG_LEVEL = 'INFO'
 MAX_MESSAGE_SIZE = 24.9 * 1024 ** 2
 
