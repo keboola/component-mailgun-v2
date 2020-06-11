@@ -12,7 +12,7 @@ from kbc.env_handler import KBCEnvHandler
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
-APP_VERSION = '0.1.4'
+APP_VERSION = '0.1.5'
 LOG_LEVEL = 'INFO'
 MAX_MESSAGE_SIZE = 24.9 * 1024 ** 2
 
@@ -92,7 +92,7 @@ class MailgunApp(KBCEnvHandler):
         globTables = os.path.join(self.tables_in_path, '*.csv')
         globFiles = os.path.join(self.files_in_path, '*')
         inputTables = glob.glob(globTables)
-        inputFiles = [os.path.basename(pathName) for pathName in glob.glob(globFiles)]
+        inputFiles = [os.path.basename(pathName).strip() for pathName in glob.glob(globFiles)]
 
         if len(inputTables) == 0:
             logging.error("No input tables specified.")
@@ -102,7 +102,7 @@ class MailgunApp(KBCEnvHandler):
                                 if not os.path.basename(pathName).startswith('_tableattachment_')]
         self.varTableAttachments = [os.path.basename(pathName) for pathName in inputTables
                                     if os.path.basename(pathName).startswith('_tableattachment_')]
-        self.varFiles = [os.path.basename(pathName) for pathName in inputFiles
+        self.varFiles = [os.path.basename(pathName).strip() for pathName in inputFiles
                          if not os.path.basename(pathName).endswith('.manifest')]
 
         for tablePath in self.varMailingLists:
@@ -145,13 +145,13 @@ class MailgunApp(KBCEnvHandler):
 
     def getHtmlTemplate(self, htmlFileName):
 
-        if htmlFileName in self.varFiles:
+        if htmlFileName.strip() in self.varFiles:
 
-            return os.path.join(self.files_in_path, htmlFileName)
+            return os.path.join(self.files_in_path, htmlFileName.strip())
 
         else:
 
-            globHtml = os.path.join(self.files_in_path, '*') + htmlFileName
+            globHtml = os.path.join(self.files_in_path, '*') + htmlFileName.strip()
             matchedHtml = glob.glob(globHtml)
 
             if len(matchedHtml) == 1:
