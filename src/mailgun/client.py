@@ -7,6 +7,7 @@ from requests.exceptions import JSONDecodeError
 
 SUPPORTED_REGIONS = ['US', 'EU']
 
+
 class AuthenticationError(Exception):
     pass
 
