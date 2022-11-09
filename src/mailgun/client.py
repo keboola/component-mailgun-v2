@@ -2,9 +2,13 @@ import os
 import logging
 import sys
 from kbc.client_base import HttpClientBase
+from requests.exceptions import JSONDecodeError
 
 
 SUPPORTED_REGIONS = ['US', 'EU']
+
+class AuthenticationError(Exception):
+    pass
 
 
 class MailgunClient(HttpClientBase):
@@ -43,7 +47,13 @@ class MailgunClient(HttpClientBase):
         reqParams = {'limit': 1}
 
         validationRequest = self.get_raw(reqUrl, headers=reqHeaders, params=reqParams)
-        _valSc, _valJs = validationRequest.status_code, validationRequest.json()
+        _valSc = validationRequest.status_code
+        try:
+            _valJs = validationRequest.json()
+        except JSONDecodeError as e:
+            raise AuthenticationError(f"Cannot authenticate. Details: "
+                                      f"{validationRequest.text} \n"
+                                      f"{e}") from e
 
         if _valSc == 200:
 
