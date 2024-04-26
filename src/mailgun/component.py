@@ -8,7 +8,8 @@ import re
 import sys
 import time
 from hashlib import md5
-from kbc.env_handler import KBCEnvHandler
+from keboola.component.base import ComponentBase, sync_action
+from keboola.component import UserException
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
@@ -42,23 +43,21 @@ class MailgunMessage:
         pass
 
 
-class MailgunApp(KBCEnvHandler):
+class MailgunApp(ComponentBase):
 
     def __init__(self):
 
-        super().__init__(MANDATORY_PARAMETERS, log_level=LOG_LEVEL)
+        super().__init__()
 
         logging.info(f"Running component version {APP_VERSION}.")
-        self.validate_config(MANDATORY_PARAMETERS)
+        self.validate_configuration_parameters(MANDATORY_PARAMETERS)
 
-        self.paramToken = self.cfg_params[KEY_API_TOKEN]
-        self.paramDomain = self.cfg_params[KEY_DOMAIN_NAME]
-        self.paramRegion = self.cfg_params[KEY_DOMAIN_REGION]
-        self.paramFromName = self.cfg_params.get(KEY_FROM_NAME)
-        self.paramFromEmail = self.cfg_params.get(KEY_FROM_EMAIL, 'postmaster') \
-            if self.cfg_params.get(KEY_FROM_EMAIL, 'postmaster') != '' else 'postmaster'
-
-        self.files_in_path = os.path.join(self.data_path, 'in', 'files')
+        self.paramToken = self.configuration.parameters[KEY_API_TOKEN]
+        self.paramDomain = self.configuration.parameters[KEY_DOMAIN_NAME]
+        self.paramRegion = self.configuration.parameters[KEY_DOMAIN_REGION]
+        self.paramFromName = self.configuration.parameters.get(KEY_FROM_NAME)
+        self.paramFromEmail = self.configuration.parameters.get(KEY_FROM_EMAIL, 'postmaster') \
+            if self.configuration.parameters.get(KEY_FROM_EMAIL, 'postmaster') != '' else 'postmaster'
 
         self.checkParameters()
         self.checkInputTablesAndFiles()
@@ -66,9 +65,9 @@ class MailgunApp(KBCEnvHandler):
         self.client = MailgunClient(paramToken=self.paramToken, paramDomain=self.paramDomain,
                                     paramFromName=self.paramFromName, paramRegion=self.paramRegion,
                                     paramFromEmail=self.paramFromEmail)
-        self.writerMessages = MailgunWriter(dataPath=self.data_path, tableName='messages', tableFields=MESSAGES_FIELDS,
+        self.writerMessages = MailgunWriter(dataPath=self.files_in_path, tableName='messages', tableFields=MESSAGES_FIELDS,
                                             primaryKeys=MESSAGES_PK, incremental=True)
-        self.writerErrors = MailgunWriter(dataPath=self.data_path, tableName='errors', tableFields=ERRORS_FIELDS,
+        self.writerErrors = MailgunWriter(dataPath=self.files_in_path, tableName='errors', tableFields=ERRORS_FIELDS,
                                           primaryKeys=ERRORS_PK, incremental=True)
 
     def checkParameters(self):
