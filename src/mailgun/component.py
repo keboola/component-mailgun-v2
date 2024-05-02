@@ -8,8 +8,7 @@ import re
 import sys
 import time
 from hashlib import md5
-from keboola.component.base import ComponentBase, sync_action
-from keboola.component import UserException
+from keboola.component.base import ComponentBase
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
@@ -402,7 +401,7 @@ class MailgunApp(ComponentBase):
 
                         toWrite['message_id'] = js['id'].replace('<', '').replace('>', '')
                         toWrite['timestamp'] = int(datetime.datetime.strptime(toWrite['message_id'].split('.')[0],
-                                                                             '%Y%m%d%H%M%S').timestamp() * 1000)
+                                                                              '%Y%m%d%H%M%S').timestamp() * 1000)
                         toWrite['specification'] = json.dumps(row)
                         toWrite['html_file_used'] = msg.html_file
                         toWrite['attachments_sent'] = json.dumps(msg.attachments)
