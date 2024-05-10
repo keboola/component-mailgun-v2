@@ -1,7 +1,7 @@
 import os
 import logging
 import sys
-from kbc.client_base import HttpClientBase
+from keboola.http_client import HttpClient
 from requests.exceptions import JSONDecodeError
 
 
@@ -12,7 +12,7 @@ class AuthenticationError(Exception):
     pass
 
 
-class MailgunClient(HttpClientBase):
+class MailgunClient(HttpClient):
 
     def __init__(self, paramToken, paramDomain, paramFromName, paramRegion, paramFromEmail='postmaster'):
 
