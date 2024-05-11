@@ -28,7 +28,7 @@ class MailgunWriter:
     def createWriter(self):
 
         self.varTablePath = os.path.join(
-            self.paramDataPath, 'out', 'tables', self.paramTableName) + '.csv'
+            self.paramDataPath, self.paramTableName) + '.csv'
 
         self.writer = csv.DictWriter(open(self.varTablePath, 'w'), fieldnames=self.paramTableFields,
                                      restval='', extrasaction='ignore', quotechar='\"',

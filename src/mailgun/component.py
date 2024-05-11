@@ -64,9 +64,9 @@ class MailgunApp(ComponentBase):
         self.client = MailgunClient(paramToken=self.paramToken, paramDomain=self.paramDomain,
                                     paramFromName=self.paramFromName, paramRegion=self.paramRegion,
                                     paramFromEmail=self.paramFromEmail)
-        self.writerMessages = MailgunWriter(dataPath=self.files_out_path, tableName='messages',
+        self.writerMessages = MailgunWriter(dataPath=self.tables_out_path, tableName='messages',
                                             tableFields=MESSAGES_FIELDS, primaryKeys=MESSAGES_PK, incremental=True)
-        self.writerErrors = MailgunWriter(dataPath=self.files_out_path, tableName='errors',
+        self.writerErrors = MailgunWriter(dataPath=self.tables_out_path, tableName='errors',
                                           tableFields=ERRORS_FIELDS, primaryKeys=ERRORS_PK, incremental=True)
 
     def checkParameters(self):
