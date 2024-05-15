@@ -5,34 +5,30 @@ from keboola.http_client import HttpClient
 from requests.exceptions import JSONDecodeError
 
 
-SUPPORTED_REGIONS = ['US', 'EU']
+REGION_URLS = {
+    'US': 'https://api.mailgun.net/v3',
+    'EU': 'https://api.eu.mailgun.net/v3'
+}
 
 
 class AuthenticationError(Exception):
     pass
 
 
+class MailgunClientException(Exception):
+    pass
+
+
 class MailgunClient(HttpClient):
 
     def __init__(self, paramToken, paramDomain, paramFromName, paramRegion, paramFromEmail='postmaster'):
+        if paramRegion not in REGION_URLS:
+            raise MailgunClientException(f"Unknown region {paramRegion}. "
+                                         f"Allowed values are: {list(REGION_URLS.keys())}.")
 
-        if paramRegion not in SUPPORTED_REGIONS:
+        base_url = os.path.join(REGION_URLS[paramRegion], paramDomain)
 
-            logging.error(f"Unknown region {paramRegion}. Allowed values are: {SUPPORTED_REGIONS}.")
-            sys.exit(1)
-
-        else:
-
-            if paramRegion == 'US':
-                BASE_URL = os.path.join('https://api.mailgun.net/v3', paramDomain)
-
-            elif paramRegion == 'EU':
-                BASE_URL = os.path.join('https://api.eu.mailgun.net/v3', paramDomain)
-
-            else:
-                pass
-
-        super().__init__(BASE_URL, auth=('api', paramToken))
+        super().__init__(base_url, auth=('api', paramToken))
         self._validateAuthentication()
 
         if paramFromName is None:
@@ -104,7 +100,7 @@ class MailgunClient(HttpClient):
         # logging.debug(reqFiles)
 
         reqUrl = os.path.join(self.base_url, 'messages')
-        reqSendMessage = self.post_raw(url=reqUrl, files=reqFiles, data=reqBody)
+        reqSendMessage = self.post_raw(reqUrl, files=reqFiles, data=reqBody, is_absolute_path=True)
         messageSc, messageJs = reqSendMessage.status_code, reqSendMessage.json()
 
         logging.debug("Message response:")

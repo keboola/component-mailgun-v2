@@ -8,9 +8,12 @@ import re
 import sys
 import time
 from hashlib import md5
-from keboola.component.base import ComponentBase
+
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
+
+from keboola.component.base import ComponentBase
+from keboola.component.exceptions import UserException
 
 APP_VERSION = '0.1.5'
 LOG_LEVEL = 'INFO'
@@ -36,13 +39,11 @@ REQUIRED_COLUMNS_TEXT = ['email', 'subject', 'text']
 
 
 class MailgunMessage:
-
     def __init__(self):
-
         pass
 
 
-class MailgunApp(ComponentBase):
+class Component(ComponentBase):
 
     def __init__(self):
 
@@ -420,3 +421,15 @@ class MailgunApp(ComponentBase):
                                                     'error_message': js['message'],
                                                     'request_id': md5('|'.join([_utc, _specification]).encode())
                                                     .hexdigest()})
+
+
+if __name__ == "__main__":
+    try:
+        comp = Component()
+        comp.execute_action()
+    except UserException as exc:
+        logging.exception(exc)
+        exit(1)
+    except Exception as exc:
+        logging.exception(exc)
+        exit(2)

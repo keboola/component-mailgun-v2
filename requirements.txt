@@ -1,3 +1,3 @@
 https://bitbucket.org/kds_consulting_team/keboola-python-util-lib/get/0.2.7.zip#egg=kbc
-keboola.component
-keboola.http_client
+keboola.component==1.4.4
+keboola.http_client==1.0.0
