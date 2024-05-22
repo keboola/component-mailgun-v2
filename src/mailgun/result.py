@@ -5,42 +5,42 @@ import os
 
 class MailgunWriter:
 
-    def __init__(self, dataPath, tableName, tableFields, primaryKeys, incremental=True):
+    def __init__(self, data_path, table_name, table_fields, primary_keys, incremental=True):
 
-        self.paramDataPath = dataPath
-        self.paramTableName = tableName
-        self.paramTableFields = tableFields
-        self.paramPK = primaryKeys
-        self.paramIncremental = incremental
+        self.param_data_path = data_path
+        self.param_table_name = table_name
+        self.param_table_fields = table_fields
+        self.param_pk = primary_keys
+        self.param_incremental = incremental
 
         self.run()
 
-    def createManifest(self):
+    def run(self):
 
-        _template = {'incremental': self.paramIncremental,
-                     'primary_key': self.paramPK}
+        self.create_writer()
+        self.create_manifest()
 
-        _manPath = self.varTablePath + '.manifest'
-        with open(_manPath, 'w') as manFile:
+    def create_manifest(self):
 
-            json.dump(_template, manFile)
+        _template = {'incremental': self.param_incremental,
+                     'primary_key': self.param_pk}
 
-    def createWriter(self):
+        _man_path = self.var_table_path + '.manifest'
+        with open(_man_path, 'w') as man_file:
 
-        self.varTablePath = os.path.join(
-            self.paramDataPath, self.paramTableName) + '.csv'
+            json.dump(_template, man_file)
 
-        self.writer = csv.DictWriter(open(self.varTablePath, 'w'), fieldnames=self.paramTableFields,
+    def create_writer(self):
+
+        self.var_table_path = os.path.join(
+            self.param_data_path, self.param_table_name) + '.csv'
+
+        self.writer = csv.DictWriter(open(self.var_table_path, 'w'), fieldnames=self.param_table_fields,
                                      restval='', extrasaction='ignore', quotechar='\"',
                                      quoting=csv.QUOTE_ALL)
 
         self.writer.writeheader()
 
-    def run(self):
+    def writerow(self, write_dict):
 
-        self.createWriter()
-        self.createManifest()
-
-    def writerow(self, writeDict):
-
-        self.writer.writerow(writeDict)
+        self.writer.writerow(write_dict)

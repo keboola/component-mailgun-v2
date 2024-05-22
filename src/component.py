@@ -52,282 +52,340 @@ class Component(ComponentBase):
         logging.info(f"Running component version {APP_VERSION}.")
         self.validate_configuration_parameters(MANDATORY_PARAMETERS)
 
-        self.paramToken = self.configuration.parameters[KEY_API_TOKEN]
-        self.paramDomain = self.configuration.parameters[KEY_DOMAIN_NAME]
-        self.paramRegion = self.configuration.parameters[KEY_DOMAIN_REGION]
-        self.paramFromName = self.configuration.parameters.get(KEY_FROM_NAME)
-        self.paramFromEmail = self.configuration.parameters.get(KEY_FROM_EMAIL, 'postmaster') \
+        self.param_token = self.configuration.parameters[KEY_API_TOKEN]
+        self.param_domain = self.configuration.parameters[KEY_DOMAIN_NAME]
+        self.param_region = self.configuration.parameters[KEY_DOMAIN_REGION]
+        self.param_from_name = self.configuration.parameters.get(KEY_FROM_NAME)
+        self.param_from_email = self.configuration.parameters.get(KEY_FROM_EMAIL, 'postmaster') \
             if self.configuration.parameters.get(KEY_FROM_EMAIL, 'postmaster') != '' else 'postmaster'
 
-        self.checkParameters()
-        self.checkInputTablesAndFiles()
+        self.check_parameters()
+        self.check_input_tables_and_files()
 
-        self.client = MailgunClient(paramToken=self.paramToken, paramDomain=self.paramDomain,
-                                    paramFromName=self.paramFromName, paramRegion=self.paramRegion,
-                                    paramFromEmail=self.paramFromEmail)
-        self.writerMessages = MailgunWriter(dataPath=self.tables_out_path, tableName='messages',
-                                            tableFields=MESSAGES_FIELDS, primaryKeys=MESSAGES_PK, incremental=True)
-        self.writerErrors = MailgunWriter(dataPath=self.tables_out_path, tableName='errors',
-                                          tableFields=ERRORS_FIELDS, primaryKeys=ERRORS_PK, incremental=True)
+        self.client = MailgunClient(,,,,,
+        self.writer_messages = MailgunWriter(,,,,
+        self.writer_errors = MailgunWriter(,,,,
 
-    def checkParameters(self):
+    def run(self):
 
-        if 'sandbox' in self.paramDomain:
+        for table in self.var_mailing_lists:
+
+            with open(table) as mailing_list:
+
+                reader = csv.DictReader(mailing_list)
+                for row in reader:
+
+                    logging.info("Starting sending process for %s." % row['email'])
+                    msg = self.compose_message(row)
+                    msg_size = self.get_message_size(msg)
+
+                    if msg is None:
+
+                        logging.warning("Process for %s exited with errors." % row['email'])
+                        continue
+
+                    elif msg_size > MAX_MESSAGE_SIZE:
+
+                        msg_size_mb = msg_size / 1024 ** 2
+                        logging.warning("Process for %s exited with errors." % row['email'])
+                        _utc = self.get_utc_time()
+                        _specification = json.dumps(row)
+                        self.writer_errors.writerow({'timestamp': _utc,
+                                                     'specification': _specification,
+                                                     'error': 'EMAIL_TOO_LARGE_ERROR',
+                                                     'error_message': "Email exceeded max. size of 25MB. " +
+                                                                      f"Total email size: {msg_size_mb}MB.",
+                                                     'request_id': md5('|'.join([_utc, _specification]).encode())
+                                                    .hexdigest()})
+                        continue
+
+                    sc, js = self.client.send_message(msg)
+
+                    if sc == 200:
+
+                        to_write = {}
+
+                        to_write['message_id'] = js['id'].replace('<', '').replace('>', '')
+                        to_write['timestamp'] = int(datetime.datetime.strptime(to_write['message_id'].split('.')[0],
+                                                                               '%Y%m%d%H%M%S').timestamp() * 1000)
+                        to_write['specification'] = json.dumps(row)
+                        to_write['html_file_used'] = msg.html_file
+                        to_write['attachments_sent'] = json.dumps(msg.attachments)
+
+                        self.writer_messages.writerow(to_write)
+
+                    else:
+
+                        logging.warn(f"There were some errors sending email to {row['email']}.")
+
+                        _utc = self.get_utc_time()
+                        _specification = json.dumps(row)
+                        self.writer_errors.writerow({'timestamp': _utc,
+                                                     'specification': _specification,
+                                                     'error': 'SEND_ERROR',
+                                                     'error_message': js['message'],
+                                                     'request_id': md5('|'.join([_utc, _specification]).encode())
+                                                    .hexdigest()})
+
+    def check_parameters(self):
+
+        if 'sandbox' in self.param_domain:
 
             logging.warn(' '.join(["Using sandbox domain. Please, make sure all of the recipients are registered as",
                                    "authorized recipients. For more information, please refer to",
                                    "https://help.mailgun.com/hc/en-us/articles/217531258-Authorized-Recipients."]))
 
         LOCAL_PART_REGEX = r"[^\w\.!#$%&'*+-/=?^_`{\|}~]|[.]{2,}"
-        localPartRgx = re.findall(LOCAL_PART_REGEX, self.paramFromEmail)
+        local_part_rgx = re.findall(LOCAL_PART_REGEX, self.param_from_email)
 
-        if len(localPartRgx) != 0:
+        if len(local_part_rgx) != 0:
 
-            logging.error("Unsupported characters in local part of email: %s" % localPartRgx)
+            logging.error("Unsupported characters in local part of email: %s" % local_part_rgx)
             sys.exit(1)
 
-    def checkInputTablesAndFiles(self):
+    def check_input_tables_and_files(self):
 
-        globTables = os.path.join(self.tables_in_path, '*.csv')
-        globFiles = os.path.join(self.files_in_path, '*')
-        inputTables = glob.glob(globTables)
-        inputFiles = [os.path.basename(pathName).strip() for pathName in glob.glob(globFiles)]
+        glob_tables = os.path.join(self.tables_in_path, '*.csv')
+        glob_files = os.path.join(self.files_in_path, '*')
+        input_tables = glob.glob(glob_tables)
+        input_files = [os.path.basename(path_name).strip() for path_name in glob.glob(glob_files)]
 
-        if len(inputTables) == 0:
+        if len(input_tables) == 0:
             logging.error("No input tables specified.")
             sys.exit(1)
 
-        self.varMailingLists = [pathName for pathName in inputTables
-                                if not os.path.basename(pathName).startswith('_tableattachment_')]
-        self.varTableAttachments = [os.path.basename(pathName) for pathName in inputTables
-                                    if os.path.basename(pathName).startswith('_tableattachment_')]
-        self.varFiles = [os.path.basename(pathName).strip() for pathName in inputFiles
-                         if not os.path.basename(pathName).endswith('.manifest')]
+        self.var_mailing_lists = [path_name for path_name in input_tables
+                                  if not os.path.basename(path_name).startswith('_tableattachment_')]
+        self.var_table_attachments = [os.path.basename(path_name) for path_name in input_tables
+                                      if os.path.basename(path_name).startswith('_tableattachment_')]
+        self.var_files = [os.path.basename(path_name).strip() for path_name in input_files
+                          if not os.path.basename(path_name).endswith('.manifest')]
 
-        for tablePath in self.varMailingLists:
+        for table_path in self.var_mailing_lists:
 
-            manifestPath = tablePath + '.manifest'
-            with open(manifestPath) as manFile:
+            manifest_path = table_path + '.manifest'
+            with open(manifest_path) as man_file:
 
-                tableColumns = json.load(manFile)['columns']
+                table_columns = json.load(man_file)['columns']
 
-            setDiffHtml = set(REQUIRED_COLUMNS_HTML) - set(tableColumns)
-            setDiffText = set(REQUIRED_COLUMNS_TEXT) - set(tableColumns)
+            set_diff_html = set(REQUIRED_COLUMNS_HTML) - set(table_columns)
+            set_diff_text = set(REQUIRED_COLUMNS_TEXT) - set(table_columns)
 
-            if setDiffHtml != set() and setDiffText != set():
+            if set_diff_html != set() and set_diff_text != set():
 
                 logging.error(' '.join(["Missing mandatory columns",
-                                        "in the mailing input table \"%s\"." % os.path.basename(tablePath),
+                                        "in the mailing input table \"%s\"." % os.path.basename(table_path),
                                         "Required columns are ['email', 'subject'] and at least",
                                         "one of ['html_file', 'text']"]))
 
                 sys.exit(1)
 
-    def getLatestFile(self, listOfFilePaths):
+    def get_latest_file(self, list_of_file_paths):
 
-        maxFilename = ''
-        maxTimestamp = '0'
+        max_filename = ''
+        max_timestamp = '0'
 
-        for filePath in listOfFilePaths:
+        for file_path in list_of_file_paths:
 
-            manifestPath = filePath + '.manifest'
-            with open(manifestPath) as manFile:
+            manifest_path = file_path + '.manifest'
+            with open(manifest_path) as man_file:
 
-                creationDate = json.load(manFile)['created']
+                creation_date = json.load(man_file)['created']
 
-                if creationDate > maxTimestamp:
+                if creation_date > max_timestamp:
 
-                    maxTimestamp = creationDate
-                    maxFilename = filePath
+                    max_timestamp = creation_date
+                    max_filename = file_path
 
-        return maxFilename
+        return max_filename
 
-    def getHtmlTemplate(self, htmlFileName):
+    def get_html_template(self, html_file_name):
 
-        if htmlFileName.strip() in self.varFiles:
+        if html_file_name.strip() in self.var_files:
 
-            return os.path.join(self.files_in_path, htmlFileName.strip())
-
-        else:
-
-            globHtml = os.path.join(self.files_in_path, '*') + htmlFileName.strip()
-            matchedHtml = glob.glob(globHtml)
-
-            if len(matchedHtml) == 1:
-
-                return matchedHtml[0]
-
-            elif len(matchedHtml) == 0:
-
-                return ''
-
-            elif len(matchedHtml) > 1:
-
-                return self.getLatestFile(matchedHtml)
-
-    def getAttachment(self, attachmentName):
-
-        if attachmentName in self.varFiles:
-
-            return os.path.join(self.files_in_path, attachmentName)
+            return os.path.join(self.files_in_path, html_file_name.strip())
 
         else:
 
-            globAttachment = os.path.join(self.files_in_path, '*') + attachmentName
-            matchedAttachment = glob.glob(globAttachment)
+            glob_html = os.path.join(self.files_in_path, '*') + html_file_name.strip()
+            matched_html = glob.glob(glob_html)
 
-            if len(matchedAttachment) == 1:
-                return matchedAttachment[0]
+            if len(matched_html) == 1:
 
-            elif len(matchedAttachment) == 0:
+                return matched_html[0]
+
+            elif len(matched_html) == 0:
+
                 return ''
 
-            elif len(matchedAttachment) > 1:
-                return self.getLatestFile(matchedAttachment)
+            elif len(matched_html) > 1:
 
-    def getUtcTime(self):
+                return self.get_latest_file(matched_html)
+
+    def get_attachment(self, attachment_name):
+
+        if attachment_name in self.var_files:
+
+            return os.path.join(self.files_in_path, attachment_name)
+
+        else:
+
+            glob_attachment = os.path.join(self.files_in_path, '*') + attachment_name
+            matched_attachment = glob.glob(glob_attachment)
+
+            if len(matched_attachment) == 1:
+                return matched_attachment[0]
+
+            elif len(matched_attachment) == 0:
+                return ''
+
+            elif len(matched_attachment) > 1:
+                return self.get_latest_file(matched_attachment)
+
+    def get_utc_time(self):
 
         return str(int(time.time() * 1000))
 
-    def getTableAttachment(self, tableAttachmentName):
+    def get_table_attachment(self, table_attachment_name):
 
-        if tableAttachmentName in self.varTableAttachments:
-            return os.path.join(self.tables_in_path, tableAttachmentName)
+        if table_attachment_name in self.var_table_attachments:
+            return os.path.join(self.tables_in_path, table_attachment_name)
 
         else:
             return ''
 
-    def composeMessage(self, rowDict):
+    def compose_message(self, row_dict):
 
         msg = MailgunMessage()
-        msg.email = rowDict['email'].strip()
-        subjectString = rowDict['subject'].strip()
-        textString = rowDict.get('text', '').strip()
+        msg.email = row_dict['email'].strip()
+        subject_string = row_dict['subject'].strip()
+        text_string = row_dict.get('text', '').strip()
 
-        for key in rowDict:
+        for key in row_dict:
 
-            textString = textString.replace(f'{{{{{key}}}}}', rowDict[key])
-            subjectString = subjectString.replace(f'{{{{{key}}}}}', rowDict[key])
+            text_string = text_string.replace(f'{{{{{key}}}}}', row_dict[key])
+            subject_string = subject_string.replace(f'{{{{{key}}}}}', row_dict[key])
 
-        msg.text = textString
-        msg.subject = subjectString
+        msg.text = text_string
+        msg.subject = subject_string
 
-        if rowDict.get('delivery_time', '').strip() != '':
-            msg.delivery_time = rowDict['delivery_time']
+        if row_dict.get('delivery_time', '').strip() != '':
+            msg.delivery_time = row_dict['delivery_time']
         else:
             msg.delivery_time = None
 
-        if rowDict.get('tags', '').strip() != '':
+        if row_dict.get('tags', '').strip() != '':
             msg.tags = [t.strip()
-                        for t in rowDict['tags'].split(',') if t.strip() != '']
+                        for t in row_dict['tags'].split(',') if t.strip() != '']
         else:
             msg.tags = []
 
-        if rowDict.get('bcc', '').strip() != '':
-            msg.bcc = rowDict['bcc']
+        if row_dict.get('bcc', '').strip() != '':
+            msg.bcc = row_dict['bcc']
         else:
             msg.bcc = None
 
-        if rowDict.get('cc', '').strip() != '':
-            msg.cc = rowDict['cc']
+        if row_dict.get('cc', '').strip() != '':
+            msg.cc = row_dict['cc']
         else:
             msg.cc = None
 
-        if rowDict.get('html_file', '').strip() != '':
+        if row_dict.get('html_file', '').strip() != '':
 
-            htmlFile = rowDict['html_file']
-            pathHtml = self.getHtmlTemplate(htmlFile)
+            html_file = row_dict['html_file']
+            path_html = self.get_html_template(html_file)
 
-            if pathHtml == '':
+            if path_html == '':
 
-                _utc = self.getUtcTime()
-                _specification = json.dumps(rowDict)
+                _utc = self.get_utc_time()
+                _specification = json.dumps(row_dict)
 
-                logging.warn(f"Could not locate html template {htmlFile}.")
-                self.writerErrors.writerow({'timestamp': _utc,
-                                            'specification': _specification,
-                                            'error': 'TEMPLATE_NOT_FOUND_ERROR',
-                                            'error_message': f"Could not locate html file {htmlFile}.",
-                                            'request_id': md5('|'.join([_utc, _specification]).encode())
+                logging.warning(f"Could not locate html template {html_file}.")
+                self.writer_errors.writerow({'timestamp': _utc,
+                                             'specification': _specification,
+                                             'error': 'TEMPLATE_NOT_FOUND_ERROR',
+                                             'error_message': f"Could not locate html file {html_file}.",
+                                             'request_id': md5('|'.join([_utc, _specification]).encode())
                                             .hexdigest()})
 
                 return None
 
-            elif os.path.splitext(pathHtml)[1] != '.html':
+            elif os.path.splitext(path_html)[1] != '.html':
 
-                _utc = self.getUtcTime()
-                _specification = json.dumps(rowDict)
+                _utc = self.get_utc_time()
+                _specification = json.dumps(row_dict)
 
-                logging.warn(f"Invalid html template {htmlFile}.")
-                self.writerErrors.writerow({'timestamp': _utc,
-                                            'specification': _specification,
-                                            'error': 'INVALID_TEMPLATE_ERROR',
-                                            'error_message': f"Template {pathHtml} for {htmlFile} is not an html file.",
-                                            'request_id': md5('|'.join([_utc, _specification]).encode())
+                logging.warn(f"Invalid html template {html_file}.")
+                self.writer_errors.writerow({'timestamp': _utc,
+                                             'specification': _specification,
+                                             'error': 'INVALID_TEMPLATE_ERROR',
+                                             'error_message': f"Template {path_html}"
+                                                              f" for {html_file} is not an html file.",
+                                             'request_id': md5('|'.join([_utc, _specification]).encode())
                                             .hexdigest()})
 
                 return None
 
             else:
 
-                htmlString = open(pathHtml).read()
-                for key in rowDict:
-                    htmlString = htmlString.replace(f'{{{{{key}}}}}', rowDict[key])
+                html_string = open(path_html).read()
+                for key in row_dict:
+                    html_string = html_string.replace(f'{{{{{key}}}}}', row_dict[key])
 
-                msg.html = htmlString
-                msg.html_file = pathHtml
+                msg.html = html_string
+                msg.html_file = path_html
 
         else:
 
             msg.html_file = ''
             msg.html = ''
 
-        if rowDict.get('attachments', '').strip() != '':
+        if row_dict.get('attachments', '').strip() != '':
 
-            attachmentsString = rowDict['attachments'].strip()
-            attachmentsSplit = [
-                att.strip() for att in attachmentsString.split(',') if att.strip() != '']
+            attachments_string = row_dict['attachments'].strip()
+            attachments_split = [
+                att.strip() for att in attachments_string.split(',') if att.strip() != '']
 
-            attachmentsPaths = []
+            attachments_paths = []
 
-            for att in attachmentsSplit:
+            for att in attachments_split:
 
                 if '_tableattachment_' in att:
 
-                    attachmentsPaths += [self.getTableAttachment(att)]
+                    attachments_paths += [self.get_table_attachment(att)]
 
                 else:
 
-                    attachmentsPaths += [self.getAttachment(att)]
+                    attachments_paths += [self.get_attachment(att)]
 
-            if '' in attachmentsPaths:
+            if '' in attachments_paths:
 
-                idx = attachmentsPaths.index('')
-                attName = attachmentsSplit[idx]
-                logging.warn("Could not locate file %s." % attName)
+                idx = attachments_paths.index('')
+                att_name = attachments_split[idx]
+                logging.warn("Could not locate file %s." % att_name)
 
-                _utc = self.getUtcTime()
-                _specification = json.dumps(rowDict)
-                self.writerErrors.writerow({'timestamp': _utc,
-                                            'specification': _specification,
-                                            'error': 'ATTACHMENT_NOT_FOUND_ERROR',
-                                            'error_message': f'Could not locate attachment {attName}.',
-                                            'request_id': md5('|'.join([_utc, _specification]).encode())
+                _utc = self.get_utc_time()
+                _specification = json.dumps(row_dict)
+                self.writer_errors.writerow({'timestamp': _utc,
+                                             'specification': _specification,
+                                             'error': 'ATTACHMENT_NOT_FOUND_ERROR',
+                                             'error_message': f'Could not locate attachment {att_name}.',
+                                             'request_id': md5('|'.join([_utc, _specification]).encode())
                                             .hexdigest()})
 
                 return None
 
             else:
 
-                msg.attachments = attachmentsPaths
+                msg.attachments = attachments_paths
 
         else:
 
             msg.attachments = []
 
-        if rowDict.get('custom_fields', '').strip() != '':
+        if row_dict.get('custom_fields', '').strip() != '':
             try:
-                _custom_fields = json.loads(rowDict.get('custom_fields', ''))
+                _custom_fields = json.loads(row_dict.get('custom_fields', ''))
 
                 if isinstance(_custom_fields, dict) is False:
                     _custom_fields = {}
@@ -343,84 +401,23 @@ class Component(ComponentBase):
 
         return msg
 
-    def getMessageSize(self, msgObject):
+    def get_message_size(self, msg_object):
 
-        totalMsgSize = 0
+        total_msg_size = 0
 
-        if msgObject is None:
+        if msg_object is None:
             return None
 
-        for key, value in vars(msgObject).items():
+        for key, value in vars(msg_object).items():
 
             if key == 'attachments':
                 for path in value:
-                    totalMsgSize += os.path.getsize(path)
+                    total_msg_size += os.path.getsize(path)
 
             else:
-                totalMsgSize += sys.getsizeof(value)
+                total_msg_size += sys.getsizeof(value)
 
-            return totalMsgSize
-
-    def run(self):
-
-        for table in self.varMailingLists:
-
-            with open(table) as mailingList:
-
-                reader = csv.DictReader(mailingList)
-                for row in reader:
-
-                    logging.info("Starting sending process for %s." % row['email'])
-                    msg = self.composeMessage(row)
-                    msgSize = self.getMessageSize(msg)
-
-                    if msg is None:
-
-                        logging.warning("Process for %s exited with errors." % row['email'])
-                        continue
-
-                    elif msgSize > MAX_MESSAGE_SIZE:
-
-                        msgSizeMB = msgSize / 1024 ** 2
-                        logging.warning("Process for %s exited with errors." % row['email'])
-                        _utc = self.getUtcTime()
-                        _specification = json.dumps(row)
-                        self.writerErrors.writerow({'timestamp': _utc,
-                                                    'specification': _specification,
-                                                    'error': 'EMAIL_TOO_LARGE_ERROR',
-                                                    'error_message': "Email exceeded max. size of 25MB. " +
-                                                    f"Total email size: {msgSizeMB}MB.",
-                                                    'request_id': md5('|'.join([_utc, _specification]).encode())
-                                                    .hexdigest()})
-                        continue
-
-                    sc, js = self.client.sendMessage(msg)
-
-                    if sc == 200:
-
-                        toWrite = {}
-
-                        toWrite['message_id'] = js['id'].replace('<', '').replace('>', '')
-                        toWrite['timestamp'] = int(datetime.datetime.strptime(toWrite['message_id'].split('.')[0],
-                                                                              '%Y%m%d%H%M%S').timestamp() * 1000)
-                        toWrite['specification'] = json.dumps(row)
-                        toWrite['html_file_used'] = msg.html_file
-                        toWrite['attachments_sent'] = json.dumps(msg.attachments)
-
-                        self.writerMessages.writerow(toWrite)
-
-                    else:
-
-                        logging.warn(f"There were some errors sending email to {row['email']}.")
-
-                        _utc = self.getUtcTime()
-                        _specification = json.dumps(row)
-                        self.writerErrors.writerow({'timestamp': _utc,
-                                                    'specification': _specification,
-                                                    'error': 'SEND_ERROR',
-                                                    'error_message': js['message'],
-                                                    'request_id': md5('|'.join([_utc, _specification]).encode())
-                                                    .hexdigest()})
+            return total_msg_size
 
 
 if __name__ == "__main__":
