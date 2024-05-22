@@ -62,9 +62,13 @@ class Component(ComponentBase):
         self.check_parameters()
         self.check_input_tables_and_files()
 
-        self.client = MailgunClient(,,,,,
-        self.writer_messages = MailgunWriter(,,,,
-        self.writer_errors = MailgunWriter(,,,,
+        self.client = MailgunClient(param_token=self.param_token, param_domain=self.param_domain,
+                                    param_from_name=self.param_from_name, param_region=self.param_region,
+                                    param_from_email=self.param_from_email)
+        self.writer_messages = MailgunWriter(data_path=self.tables_out_path, table_name='messages',
+                                             table_fields=MESSAGES_FIELDS, primary_keys=MESSAGES_PK, incremental=True)
+        self.writer_errors = MailgunWriter(data_path=self.tables_out_path, table_name='errors',
+                                           table_fields=ERRORS_FIELDS, primary_keys=ERRORS_PK, incremental=True)
 
     def run(self):
 
