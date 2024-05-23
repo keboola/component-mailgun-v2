@@ -120,7 +120,7 @@ class Component(ComponentBase):
 
                     else:
 
-                        logging.warn(f"There were some errors sending email to {row['email']}.")
+                        logging.warning(f"There were some errors sending email to {row['email']}.")
 
                         _utc = self.get_utc_time()
                         _specification = json.dumps(row)
@@ -143,9 +143,7 @@ class Component(ComponentBase):
         local_part_rgx = re.findall(LOCAL_PART_REGEX, self.param_from_email)
 
         if len(local_part_rgx) != 0:
-
-            logging.error("Unsupported characters in local part of email: %s" % local_part_rgx)
-            sys.exit(1)
+            raise UserException(f"Unsupported characters in local part of email: %s" % local_part_rgx)
 
     def check_input_tables_and_files(self):
 
@@ -155,8 +153,7 @@ class Component(ComponentBase):
         input_files = [os.path.basename(path_name).strip() for path_name in glob.glob(glob_files)]
 
         if len(input_tables) == 0:
-            logging.error("No input tables specified.")
-            sys.exit(1)
+            raise UserException(f"No input tables specified.")
 
         self.var_mailing_lists = [path_name for path_name in input_tables
                                   if not os.path.basename(path_name).startswith('_tableattachment_')]
@@ -176,13 +173,10 @@ class Component(ComponentBase):
             set_diff_text = set(REQUIRED_COLUMNS_TEXT) - set(table_columns)
 
             if set_diff_html != set() and set_diff_text != set():
-
-                logging.error(' '.join(["Missing mandatory columns",
-                                        "in the mailing input table \"%s\"." % os.path.basename(table_path),
-                                        "Required columns are ['email', 'subject'] and at least",
-                                        "one of ['html_file', 'text']"]))
-
-                sys.exit(1)
+                raise UserException(' '.join(["Missing mandatory columns",
+                                              "in the mailing input table \"%s\"." % os.path.basename(table_path),
+                                              "Required columns are ['email', 'subject'] and at least",
+                                              "one of ['html_file', 'text']"]))
 
     def get_latest_file(self, list_of_file_paths):
 
@@ -319,7 +313,7 @@ class Component(ComponentBase):
                 _utc = self.get_utc_time()
                 _specification = json.dumps(row_dict)
 
-                logging.warn(f"Invalid html template {html_file}.")
+                logging.warning(f"Invalid html template {html_file}.")
                 self.writer_errors.writerow({'timestamp': _utc,
                                              'specification': _specification,
                                              'error': 'INVALID_TEMPLATE_ERROR',

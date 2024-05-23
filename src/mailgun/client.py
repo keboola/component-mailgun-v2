@@ -1,7 +1,7 @@
 import os
 import logging
-import sys
 from keboola.http_client import HttpClient
+from keboola.component.exceptions import UserException
 from requests.exceptions import JSONDecodeError
 
 
@@ -57,10 +57,8 @@ class MailgunClient(HttpClient):
             logging.info("Authentication successful.")
 
         else:
-
-            logging.error("Authentication was not successful. Please check the credentials.")
-            logging.error("Response received: %s - %s." % (_val_sc, _val_js['message']))
-            sys.exit(1)
+            raise UserException(f"Authentication was not successful. Please check the credentials.\n"
+                                f"Response received: %s - %s." % (_val_sc, _val_js['message']))
 
     def send_message(self, msg_object):
 
