@@ -14,7 +14,13 @@
             "title": "API Key",
             "description": "API key for authentication purposes. See <a target='_blank' href='https://help.mailgun.com/hc/en-us/articles/203380100-Where-Can-I-Find-My-API-Key-and-SMTP-Credentials-'>Mailgun documentation</a> for more information.",
             "propertyOrder": 100,
-            "minLength": 1
+            "minLength": 1,
+            "options": {
+                "async": {
+                "label": "Validate API key",
+                "action": "test_api_key"
+                }
+      }
         },
         "domainName": {
             "type": "string",

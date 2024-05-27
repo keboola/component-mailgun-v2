@@ -12,7 +12,8 @@ from hashlib import md5
 from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
-from keboola.component.base import ComponentBase
+from keboola.component.base import ComponentBase, sync_action
+import requests
 from keboola.component.exceptions import UserException
 
 APP_VERSION = '0.1.5'
@@ -416,6 +417,19 @@ class Component(ComponentBase):
                 total_msg_size += sys.getsizeof(value)
 
             return total_msg_size
+
+    @sync_action('test_api_key')
+    def test_api_key(self):
+        region_urls = {
+            'US': f'https://api.mailgun.net/v3/{self.param_domain}/events',
+            'EU': f'https://api.eu.mailgun.net/v3/{self.param_domain}/events'
+        }
+        auth = requests.auth.HTTPBasicAuth('api', self.param_token)
+        response = requests.get(region_urls[self.param_region], auth=auth)
+        if response.ok:
+            logging.info("Validation successful")
+        else:
+            raise UserException("Validation failed")
 
 
 if __name__ == "__main__":
