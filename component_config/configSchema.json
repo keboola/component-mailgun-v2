@@ -46,17 +46,17 @@
             "title": "Sender's Local Part of Address",
             "description": "Local part of sender's email. Allows customization of the first part of sending email address. E.g. <b>johndoe</b> @mydomain.com",
             "propertyOrder": 500
-        }
-    },
-    "validation_button": {
-        "type": "button",
-        "format": "sync-action",
-        "propertyOrder": 350,
-        "options": {
-            "async": {
-            "label": "TEST CONNECTION",
-            "action": "test_api_key"
-             }
+        },
+        "validation_button": {
+            "type": "button",
+            "format": "sync-action",
+            "propertyOrder": 350,
+            "options": {
+                "async": {
+                    "label": "TEST CONNECTION",
+                    "action": "test_api_key"
+                }
+            }
         }
     }
 }

@@ -154,7 +154,7 @@ class Component(ComponentBase):
         input_files = [os.path.basename(path_name).strip() for path_name in glob.glob(glob_files)]
 
         if len(input_tables) == 0:
-            raise UserException("No input tables specified.")
+            raise UserException("?????????No input tables specified.")
 
         self.var_mailing_lists = [path_name for path_name in input_tables
                                   if not os.path.basename(path_name).startswith('_tableattachment_')]
