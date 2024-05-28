@@ -61,7 +61,6 @@ class Component(ComponentBase):
             if self.configuration.parameters.get(KEY_FROM_EMAIL, 'postmaster') != '' else 'postmaster'
 
         self.check_parameters()
-        self.check_input_tables_and_files()
 
         self.client = MailgunClient(param_token=self.param_token, param_domain=self.param_domain,
                                     param_from_name=self.param_from_name, param_region=self.param_region,
@@ -72,6 +71,7 @@ class Component(ComponentBase):
                                            table_fields=ERRORS_FIELDS, primary_keys=ERRORS_PK, incremental=True)
 
     def run(self):
+        self.check_input_tables_and_files()
 
         for table in self.var_mailing_lists:
 
