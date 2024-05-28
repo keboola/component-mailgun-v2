@@ -19,7 +19,7 @@
         "domainName": {
             "type": "string",
             "title": "Domain",
-            "description": "Mailgun domain; either sandbox or production version.</br>If sandbox domain is used, please make sure, that all recipients are registered as <a target='_blank' href='https://help.mailgun.com/hc/en-us/articles/217531258-Authorized-Recipients'>authorized recipients</a>.",
+            "description": "Mailgun domain; either sandbox or production version. E.g. johndoe@<b>mydomain.com</b> </br>If sandbox domain is used, please make sure, that all recipients are registered as <a target='_blank' href='https://help.mailgun.com/hc/en-us/articles/217531258-Authorized-Recipients'>authorized recipients</a>.",
             "propertyOrder": 200,
             "minLength": 1
         },
@@ -38,24 +38,23 @@
         "fromName": {
             "type": "string",
             "title": "Sender Name",
-            "description": "Name to be displayed as email signature of the sender.",
-            "propertyOrder": 400,
-            "minLength": 1
+            "description": "Name to be displayed as email signature of the sender. E.g. '<b>John Doe</b>'",
+            "propertyOrder": 400
         },
         "fromEmail": {
             "type": "string",
             "title": "Sender's Local Part of Address",
-            "description": "Local part of sender's email. Allows customization of the first part of sending email address. [Sender's address]@domain.com",
+            "description": "Local part of sender's email. Allows customization of the first part of sending email address. E.g. <b>johndoe</b> @mydomain.com",
             "propertyOrder": 500
         }
     },
     "validation_button": {
         "type": "button",
         "format": "sync-action",
-        "propertyOrder": 10,
+        "propertyOrder": 350,
         "options": {
             "async": {
-            "label": "Validate API key",
+            "label": "TEST CONNECTION",
             "action": "test_api_key"
              }
         }
