@@ -144,7 +144,7 @@ class Component(ComponentBase):
         local_part_rgx = re.findall(LOCAL_PART_REGEX, self.param_from_email)
 
         if len(local_part_rgx) != 0:
-            raise UserException(f"Unsupported characters in local part of email: %s" % local_part_rgx)
+            raise UserException("Unsupported characters in local part of email: %s" % local_part_rgx)
 
     def check_input_tables_and_files(self):
 
@@ -154,7 +154,7 @@ class Component(ComponentBase):
         input_files = [os.path.basename(path_name).strip() for path_name in glob.glob(glob_files)]
 
         if len(input_tables) == 0:
-            raise UserException(f"No input tables specified.")
+            raise UserException("No input tables specified.")
 
         self.var_mailing_lists = [path_name for path_name in input_tables
                                   if not os.path.basename(path_name).startswith('_tableattachment_')]
