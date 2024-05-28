@@ -38,14 +38,14 @@
         "fromName": {
             "type": "string",
             "title": "Sender Name",
-            "description": "Email signature of the sender.",
+            "description": "Name to be displayed as email signature of the sender.",
             "propertyOrder": 400,
             "minLength": 1
         },
         "fromEmail": {
             "type": "string",
             "title": "Sender's Local Part of Address",
-            "description": "Local part of sender's email. Allows customization of the first part of sending email address.",
+            "description": "Local part of sender's email. Allows customization of the first part of sending email address. [Sender's address]@domain.com",
             "propertyOrder": 500
         }
     },

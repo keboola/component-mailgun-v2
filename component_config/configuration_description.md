@@ -41,7 +41,7 @@ An optional parameter, configurable only via API is:
 - Sender Email
     - **type:** optional
     - **configuration name:** `fromEmail`
-    - **description:** The local part of the email address used to send messages.
+    - **description:** The local part of the email address used to send messages. [fromEmail]@[domainName]
     - **default:** `postmaster`
 
 #### Mailing list
