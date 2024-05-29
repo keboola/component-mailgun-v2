@@ -62,6 +62,10 @@ class Component(ComponentBase):
 
         self.check_parameters()
 
+    def run(self):
+
+        self.check_input_tables_and_files()
+
         self.client = MailgunClient(param_token=self.param_token, param_domain=self.param_domain,
                                     param_from_name=self.param_from_name, param_region=self.param_region,
                                     param_from_email=self.param_from_email)
@@ -69,9 +73,6 @@ class Component(ComponentBase):
                                              table_fields=MESSAGES_FIELDS, primary_keys=MESSAGES_PK, incremental=True)
         self.writer_errors = MailgunWriter(data_path=self.tables_out_path, table_name='errors',
                                            table_fields=ERRORS_FIELDS, primary_keys=ERRORS_PK, incremental=True)
-
-    def run(self):
-        self.check_input_tables_and_files()
 
         for table in self.var_mailing_lists:
 
@@ -136,7 +137,7 @@ class Component(ComponentBase):
 
         if 'sandbox' in self.param_domain:
 
-            logging.warn(' '.join(["Using sandbox domain. Please, make sure all of the recipients are registered as",
+            logging.warning(' '.join(["Using sandbox domain. Please, make sure all of the recipients are registered as",
                                    "authorized recipients. For more information, please refer to",
                                    "https://help.mailgun.com/hc/en-us/articles/217531258-Authorized-Recipients."]))
 
@@ -361,7 +362,7 @@ class Component(ComponentBase):
 
                 idx = attachments_paths.index('')
                 att_name = attachments_split[idx]
-                logging.warn("Could not locate file %s." % att_name)
+                logging.warning("Could not locate file %s." % att_name)
 
                 _utc = self.get_utc_time()
                 _specification = json.dumps(row_dict)

@@ -58,7 +58,7 @@ class MailgunClient(HttpClient):
 
         else:
             raise UserException("Authentication was not successful. Please check the credentials.\n"
-                                "Response received: %s - %s." % (_val_sc, _val_js['message']))
+                                "Response received: %s - %s." % (_val_sc, _val_js))
 
     def send_message(self, msg_object):
 
