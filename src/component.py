@@ -138,8 +138,8 @@ class Component(ComponentBase):
         if 'sandbox' in self.param_domain:
 
             logging.warning(' '.join(["Using sandbox domain. Please, make sure all of the recipients are registered as",
-                                   "authorized recipients. For more information, please refer to",
-                                   "https://help.mailgun.com/hc/en-us/articles/217531258-Authorized-Recipients."]))
+                                      "authorized recipients. For more information, please refer to",
+                                      "https://help.mailgun.com/hc/en-us/articles/217531258-Authorized-Recipients."]))
 
         LOCAL_PART_REGEX = r"[^\w\.!#$%&'*+-/=?^_`{\|}~]|[.]{2,}"
         local_part_rgx = re.findall(LOCAL_PART_REGEX, self.param_from_email)
