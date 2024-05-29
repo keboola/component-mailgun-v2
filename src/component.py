@@ -14,7 +14,6 @@ from mailgun.client import MailgunClient
 from mailgun.result import MailgunWriter
 
 from keboola.component.base import ComponentBase, sync_action
-from keboola.component.sync_actions import ValidationResult, MessageType
 from keboola.component.exceptions import UserException
 
 APP_VERSION = '0.1.5'
@@ -429,7 +428,7 @@ class Component(ComponentBase):
         auth = requests.auth.HTTPBasicAuth('api', self.param_token)
         response = requests.get(region_urls[self.param_region], auth=auth)
         if response.ok:
-            return ValidationResult('Success, API key is valid', MessageType.INFO)
+            logging.info("Success, the API key is valid.")
         else:
             raise UserException("Validation failed. Please check the credentials.")
 
