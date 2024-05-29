@@ -49,7 +49,7 @@
         },
         "validation_button": {
             "type": "button",
-            "format": "sync-action",
+            "format": "test-connection",
             "propertyOrder": 350,
             "options": {
                 "async": {

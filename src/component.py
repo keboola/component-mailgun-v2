@@ -419,18 +419,19 @@ class Component(ComponentBase):
 
             return total_msg_size
 
-    @sync_action('test_api_key')
+    @sync_action('testConnection')
     def test_api_key(self):
+
         region_urls = {
             'US': f'https://api.mailgun.net/v3/{self.param_domain}/events',
             'EU': f'https://api.eu.mailgun.net/v3/{self.param_domain}/events'
         }
         auth = requests.auth.HTTPBasicAuth('api', self.param_token)
         response = requests.get(region_urls[self.param_region], auth=auth)
-        if response.ok:
-            logging.info("Success, the API key is valid.")
-        else:
+        if not response.ok:
             raise UserException("Validation failed. Please check the credentials.")
+        else:
+            logging.info("Success, the API key is valid.")
 
 
 if __name__ == "__main__":
