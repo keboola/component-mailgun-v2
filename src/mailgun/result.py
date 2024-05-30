@@ -7,6 +7,8 @@ class MailgunWriter:
 
     def __init__(self, data_path, table_name, table_fields, primary_keys, incremental=True):
 
+        self.writer = None
+        self.var_table_path = None
         self.param_data_path = data_path
         self.param_table_name = table_name
         self.param_table_fields = table_fields
@@ -16,7 +18,6 @@ class MailgunWriter:
         self.run()
 
     def run(self):
-
         self.create_writer()
         self.create_manifest()
 
@@ -26,8 +27,8 @@ class MailgunWriter:
                      'primary_key': self.param_pk}
 
         _man_path = self.var_table_path + '.manifest'
-        with open(_man_path, 'w') as man_file:
 
+        with open(_man_path, 'w') as man_file:
             json.dump(_template, man_file)
 
     def create_writer(self):
@@ -42,5 +43,4 @@ class MailgunWriter:
         self.writer.writeheader()
 
     def writerow(self, write_dict):
-
         self.writer.writerow(write_dict)

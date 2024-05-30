@@ -33,7 +33,6 @@ class MailgunClient(HttpClient):
 
         if param_from_name is None:
             self.param_from_id = f'{param_from_email}@{param_domain}'
-
         else:
             self.param_from_id = ' '.join([param_from_name, f'<{param_from_email}@{param_domain}>'])
 
@@ -45,6 +44,7 @@ class MailgunClient(HttpClient):
 
         validation_request = self.get_raw(req_url, headers=req_headers, params=req_params)
         _val_sc = validation_request.status_code
+
         try:
             _val_js = validation_request.json()
         except JSONDecodeError as e:
@@ -53,9 +53,7 @@ class MailgunClient(HttpClient):
                                       f"{e}") from e
 
         if _val_sc == 200:
-
             logging.info("Authentication successful.")
-
         else:
             raise UserException("Authentication was not successful. Please check the credentials.\n"
                                 "Response received: %s - %s." % (_val_sc, _val_js))
@@ -85,17 +83,14 @@ class MailgunClient(HttpClient):
         if msg_object.custom_fields is not None:
             req_body = {**msg_object.custom_fields, **req_body}
 
-        logging.debug("Body:")
-        logging.debug(req_body)
+        logging.debug(f"Body: {req_body}")
 
         req_files = []
         for path in msg_object.attachments:
-
             req_files += [('attachment', (os.path.basename(path).replace('_tableattachment_', ''),
                                           open(path, 'rb').read()))]
 
-        # logging.debug("Attachments:")
-        # logging.debug(req_files)
+        logging.debug(f"Attachments: {req_files}")
 
         req_url = os.path.join(self.base_url, 'messages')
         req_send_message = self.post_raw(req_url, files=req_files, data=req_body, is_absolute_path=True)

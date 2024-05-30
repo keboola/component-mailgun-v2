@@ -47,8 +47,11 @@ class MailgunMessage:
 class Component(ComponentBase):
 
     def __init__(self):
-
         super().__init__()
+        self.writer_errors = None
+        self.var_files = None
+        self.var_table_attachments = None
+        self.var_mailing_lists = None
 
         logging.info(f"Running component version {APP_VERSION}.")
         self.validate_configuration_parameters(MANDATORY_PARAMETERS)
@@ -66,34 +69,32 @@ class Component(ComponentBase):
 
         self.check_input_tables_and_files()
 
-        self.client = MailgunClient(param_token=self.param_token, param_domain=self.param_domain,
-                                    param_from_name=self.param_from_name, param_region=self.param_region,
-                                    param_from_email=self.param_from_email)
-        self.writer_messages = MailgunWriter(data_path=self.tables_out_path, table_name='messages',
-                                             table_fields=MESSAGES_FIELDS, primary_keys=MESSAGES_PK, incremental=True)
+        client = MailgunClient(param_token=self.param_token, param_domain=self.param_domain,
+                               param_from_name=self.param_from_name, param_region=self.param_region,
+                               param_from_email=self.param_from_email)
+
+        writer_messages = MailgunWriter(data_path=self.tables_out_path, table_name='messages',
+                                        table_fields=MESSAGES_FIELDS, primary_keys=MESSAGES_PK, incremental=True)
+
         self.writer_errors = MailgunWriter(data_path=self.tables_out_path, table_name='errors',
                                            table_fields=ERRORS_FIELDS, primary_keys=ERRORS_PK, incremental=True)
 
         for table in self.var_mailing_lists:
-
             with open(table) as mailing_list:
-
                 reader = csv.DictReader(mailing_list)
-                for row in reader:
 
-                    logging.info("Starting sending process for %s." % row['email'])
-                    msg = self.compose_message(row)
+                for row in reader:
+                    logging.info("Starting sending process for %s." % row.get('email'))
+                    msg = self.compose_message(row)  # noqa
                     msg_size = self.get_message_size(msg)
 
                     if msg is None:
-
-                        logging.warning("Process for %s exited with errors." % row['email'])
+                        logging.warning("Process for %s exited with errors." % row.get('email'))
                         continue
 
                     elif msg_size > MAX_MESSAGE_SIZE:
-
                         msg_size_mb = msg_size / 1024 ** 2
-                        logging.warning("Process for %s exited with errors." % row['email'])
+                        logging.warning("Process for %s exited with errors." % row.get('email'))
                         _utc = self.get_utc_time()
                         _specification = json.dumps(row)
                         self.writer_errors.writerow({'timestamp': _utc,
@@ -105,10 +106,9 @@ class Component(ComponentBase):
                                                     .hexdigest()})
                         continue
 
-                    sc, js = self.client.send_message(msg)
+                    sc, js = client.send_message(msg)
 
                     if sc == 200:
-
                         to_write = {}
 
                         to_write['message_id'] = js['id'].replace('<', '').replace('>', '')
@@ -118,11 +118,10 @@ class Component(ComponentBase):
                         to_write['html_file_used'] = msg.html_file
                         to_write['attachments_sent'] = json.dumps(msg.attachments)
 
-                        self.writer_messages.writerow(to_write)
+                        writer_messages.writerow(to_write)
 
                     else:
-
-                        logging.warning(f"There were some errors sending email to {row['email']}.")
+                        logging.warning(f"There were some errors sending email to {row.get('email')}.")
 
                         _utc = self.get_utc_time()
                         _specification = json.dumps(row)
@@ -136,16 +135,15 @@ class Component(ComponentBase):
     def check_parameters(self):
 
         if 'sandbox' in self.param_domain:
-
             logging.warning(' '.join(["Using sandbox domain. Please, make sure all of the recipients are registered as",
                                       "authorized recipients. For more information, please refer to",
                                       "https://help.mailgun.com/hc/en-us/articles/217531258-Authorized-Recipients."]))
 
-        LOCAL_PART_REGEX = r"[^\w\.!#$%&'*+-/=?^_`{\|}~]|[.]{2,}"
-        local_part_rgx = re.findall(LOCAL_PART_REGEX, self.param_from_email)
+        r = r"[^\w\.!#$%&'*+-/=?^_`{\|}~]|[.]{2,}"
+        local_part_rgx = re.findall(r, self.param_from_email)
 
         if len(local_part_rgx) != 0:
-            raise UserException("Unsupported characters in local part of email: %s" % local_part_rgx)
+            raise UserException(f"Unsupported characters in local part of email: {local_part_rgx}")
 
     def check_input_tables_and_files(self):
 
@@ -155,7 +153,7 @@ class Component(ComponentBase):
         input_files = [os.path.basename(path_name).strip() for path_name in glob.glob(glob_files)]
 
         if len(input_tables) == 0:
-            raise UserException("?????????No input tables specified.")
+            raise UserException("No input tables specified.")
 
         self.var_mailing_lists = [path_name for path_name in input_tables
                                   if not os.path.basename(path_name).startswith('_tableattachment_')]
@@ -180,20 +178,17 @@ class Component(ComponentBase):
                                               "Required columns are ['email', 'subject'] and at least",
                                               "one of ['html_file', 'text']"]))
 
-    def get_latest_file(self, list_of_file_paths):
-
+    @staticmethod
+    def get_latest_file(list_of_file_paths):
         max_filename = ''
         max_timestamp = '0'
 
         for file_path in list_of_file_paths:
-
             manifest_path = file_path + '.manifest'
             with open(manifest_path) as man_file:
-
                 creation_date = json.load(man_file)['created']
 
                 if creation_date > max_timestamp:
-
                     max_timestamp = creation_date
                     max_filename = file_path
 
@@ -202,34 +197,23 @@ class Component(ComponentBase):
     def get_html_template(self, html_file_name):
 
         if html_file_name.strip() in self.var_files:
-
             return os.path.join(self.files_in_path, html_file_name.strip())
-
         else:
-
             glob_html = os.path.join(self.files_in_path, '*') + html_file_name.strip()
             matched_html = glob.glob(glob_html)
 
             if len(matched_html) == 1:
-
                 return matched_html[0]
-
             elif len(matched_html) == 0:
-
                 return ''
 
             elif len(matched_html) > 1:
-
                 return self.get_latest_file(matched_html)
 
     def get_attachment(self, attachment_name):
-
         if attachment_name in self.var_files:
-
             return os.path.join(self.files_in_path, attachment_name)
-
         else:
-
             glob_attachment = os.path.join(self.files_in_path, '*') + attachment_name
             matched_attachment = glob.glob(glob_attachment)
 
@@ -242,17 +226,14 @@ class Component(ComponentBase):
             elif len(matched_attachment) > 1:
                 return self.get_latest_file(matched_attachment)
 
-    def get_utc_time(self):
-
+    @staticmethod
+    def get_utc_time():
         return str(int(time.time() * 1000))
 
     def get_table_attachment(self, table_attachment_name):
-
         if table_attachment_name in self.var_table_attachments:
             return os.path.join(self.tables_in_path, table_attachment_name)
-
-        else:
-            return ''
+        return ''
 
     def compose_message(self, row_dict):
 
@@ -262,7 +243,6 @@ class Component(ComponentBase):
         text_string = row_dict.get('text', '').strip()
 
         for key in row_dict:
-
             text_string = text_string.replace(f'{{{{{key}}}}}', row_dict[key])
             subject_string = subject_string.replace(f'{{{{{key}}}}}', row_dict[key])
 
@@ -325,41 +305,30 @@ class Component(ComponentBase):
                                             .hexdigest()})
 
                 return None
-
             else:
-
                 html_string = open(path_html).read()
                 for key in row_dict:
                     html_string = html_string.replace(f'{{{{{key}}}}}', row_dict[key])
 
                 msg.html = html_string
                 msg.html_file = path_html
-
         else:
-
             msg.html_file = ''
             msg.html = ''
 
         if row_dict.get('attachments', '').strip() != '':
-
             attachments_string = row_dict['attachments'].strip()
             attachments_split = [
                 att.strip() for att in attachments_string.split(',') if att.strip() != '']
 
             attachments_paths = []
-
             for att in attachments_split:
-
                 if '_tableattachment_' in att:
-
                     attachments_paths += [self.get_table_attachment(att)]
-
                 else:
-
                     attachments_paths += [self.get_attachment(att)]
 
             if '' in attachments_paths:
-
                 idx = attachments_paths.index('')
                 att_name = attachments_split[idx]
                 logging.warning("Could not locate file %s." % att_name)
@@ -372,48 +341,40 @@ class Component(ComponentBase):
                                              'error_message': f'Could not locate attachment {att_name}.',
                                              'request_id': md5('|'.join([_utc, _specification]).encode())
                                             .hexdigest()})
-
                 return None
-
             else:
-
                 msg.attachments = attachments_paths
-
         else:
-
             msg.attachments = []
 
         if row_dict.get('custom_fields', '').strip() != '':
+            _custom_fields = ''
+
             try:
                 _custom_fields = json.loads(row_dict.get('custom_fields', ''))
 
                 if isinstance(_custom_fields, dict) is False:
                     _custom_fields = {}
-
             except ValueError:
                 _custom_fields = None
-
             finally:
                 msg.custom_fields = _custom_fields
 
         else:
             msg.custom_fields = None
-
         return msg
 
-    def get_message_size(self, msg_object):
-
+    @staticmethod
+    def get_message_size(msg_object):
         total_msg_size = 0
 
         if msg_object is None:
             return None
 
         for key, value in vars(msg_object).items():
-
             if key == 'attachments':
                 for path in value:
                     total_msg_size += os.path.getsize(path)
-
             else:
                 total_msg_size += sys.getsizeof(value)
 
@@ -421,7 +382,6 @@ class Component(ComponentBase):
 
     @sync_action('testConnection')
     def test_api_key(self):
-
         region_urls = {
             'US': f'https://api.mailgun.net/v3/{self.param_domain}/events',
             'EU': f'https://api.eu.mailgun.net/v3/{self.param_domain}/events'
