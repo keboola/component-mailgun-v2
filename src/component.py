@@ -388,10 +388,11 @@ class Component(ComponentBase):
         }
         auth = requests.auth.HTTPBasicAuth('api', self.param_token)
         response = requests.get(region_urls[self.param_region], auth=auth)
-        if not response.ok:
-            raise UserException("Validation failed. Please check the credentials.")
-        else:
-            logging.info("Success, the API key is valid.")
+
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError:
+            UserException("Validation failed. Please check the credentials.")
 
 
 if __name__ == "__main__":
