@@ -5,42 +5,42 @@ import os
 
 class MailgunWriter:
 
-    def __init__(self, dataPath, tableName, tableFields, primaryKeys, incremental=True):
+    def __init__(self, data_path, table_name, table_fields, primary_keys, incremental=True):
 
-        self.paramDataPath = dataPath
-        self.paramTableName = tableName
-        self.paramTableFields = tableFields
-        self.paramPK = primaryKeys
-        self.paramIncremental = incremental
+        self.writer = None
+        self.var_table_path = None
+        self.param_data_path = data_path
+        self.param_table_name = table_name
+        self.param_table_fields = table_fields
+        self.param_pk = primary_keys
+        self.param_incremental = incremental
 
         self.run()
 
-    def createManifest(self):
+    def run(self):
+        self.create_writer()
+        self.create_manifest()
 
-        _template = {'incremental': self.paramIncremental,
-                     'primary_key': self.paramPK}
+    def create_manifest(self):
 
-        _manPath = self.varTablePath + '.manifest'
-        with open(_manPath, 'w') as manFile:
+        _template = {'incremental': self.param_incremental,
+                     'primary_key': self.param_pk}
 
-            json.dump(_template, manFile)
+        _man_path = self.var_table_path + '.manifest'
 
-    def createWriter(self):
+        with open(_man_path, 'w') as man_file:
+            json.dump(_template, man_file)
 
-        self.varTablePath = os.path.join(
-            self.paramDataPath, 'out', 'tables', self.paramTableName) + '.csv'
+    def create_writer(self):
 
-        self.writer = csv.DictWriter(open(self.varTablePath, 'w'), fieldnames=self.paramTableFields,
+        self.var_table_path = os.path.join(
+            self.param_data_path, self.param_table_name) + '.csv'
+
+        self.writer = csv.DictWriter(open(self.var_table_path, 'w'), fieldnames=self.param_table_fields,
                                      restval='', extrasaction='ignore', quotechar='\"',
                                      quoting=csv.QUOTE_ALL)
 
         self.writer.writeheader()
 
-    def run(self):
-
-        self.createWriter()
-        self.createManifest()
-
-    def writerow(self, writeDict):
-
-        self.writer.writerow(writeDict)
+    def writerow(self, write_dict):
+        self.writer.writerow(write_dict)

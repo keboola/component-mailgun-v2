@@ -1,113 +1,102 @@
 import os
 import logging
-import sys
-from kbc.client_base import HttpClientBase
+from keboola.http_client import HttpClient
+from keboola.component.exceptions import UserException
 from requests.exceptions import JSONDecodeError
 
 
-SUPPORTED_REGIONS = ['US', 'EU']
+REGION_URLS = {
+    'US': 'https://api.mailgun.net/v3',
+    'EU': 'https://api.eu.mailgun.net/v3'
+}
 
 
 class AuthenticationError(Exception):
     pass
 
 
-class MailgunClient(HttpClientBase):
+class MailgunClientException(Exception):
+    pass
 
-    def __init__(self, paramToken, paramDomain, paramFromName, paramRegion, paramFromEmail='postmaster'):
 
-        if paramRegion not in SUPPORTED_REGIONS:
+class MailgunClient(HttpClient):
 
-            logging.error(f"Unknown region {paramRegion}. Allowed values are: {SUPPORTED_REGIONS}.")
-            sys.exit(1)
+    def __init__(self, param_token, param_domain, param_from_name, param_region, param_from_email='postmaster'):
+        if param_region not in REGION_URLS:
+            raise MailgunClientException(f"Unknown region {param_region}. "
+                                         f"Allowed values are: {list(REGION_URLS.keys())}.")
 
+        base_url = os.path.join(REGION_URLS[param_region], param_domain)
+
+        super().__init__(base_url, auth=('api', param_token))
+        self._validate_authentication()
+
+        if param_from_name is None:
+            self.param_from_id = f'{param_from_email}@{param_domain}'
         else:
+            self.param_from_id = ' '.join([param_from_name, f'<{param_from_email}@{param_domain}>'])
 
-            if paramRegion == 'US':
-                BASE_URL = os.path.join('https://api.mailgun.net/v3', paramDomain)
+    def _validate_authentication(self):
 
-            elif paramRegion == 'EU':
-                BASE_URL = os.path.join('https://api.eu.mailgun.net/v3', paramDomain)
+        req_url = os.path.join(self.base_url, 'events')
+        req_headers = {'accept': 'application/json'}
+        req_params = {'limit': 1}
 
-            else:
-                pass
+        validation_request = self.get_raw(req_url, headers=req_headers, params=req_params)
+        _val_sc = validation_request.status_code
 
-        super().__init__(BASE_URL, auth=('api', paramToken))
-        self._validateAuthentication()
-
-        if paramFromName is None:
-            self.paramFromId = f'{paramFromEmail}@{paramDomain}'
-
-        else:
-            self.paramFromId = ' '.join([paramFromName, f'<{paramFromEmail}@{paramDomain}>'])
-
-    def _validateAuthentication(self):
-
-        reqUrl = os.path.join(self.base_url, 'events')
-        reqHeaders = {'accept': 'application/json'}
-        reqParams = {'limit': 1}
-
-        validationRequest = self.get_raw(reqUrl, headers=reqHeaders, params=reqParams)
-        _valSc = validationRequest.status_code
         try:
-            _valJs = validationRequest.json()
+            _val_js = validation_request.json()
         except JSONDecodeError as e:
             raise AuthenticationError(f"Cannot authenticate. Details: "
-                                      f"{validationRequest.text} \n"
+                                      f"{validation_request.text} \n"
                                       f"{e}") from e
 
-        if _valSc == 200:
-
+        if _val_sc == 200:
             logging.info("Authentication successful.")
-
         else:
+            raise UserException("Authentication was not successful. Please check the credentials.\n"
+                                "Response received: %s - %s." % (_val_sc, _val_js))
 
-            logging.error("Authentication was not successful. Please check the credentials.")
-            logging.error("Response received: %s - %s." % (_valSc, _valJs['message']))
-            sys.exit(1)
+    def send_message(self, msg_object):
 
-    def sendMessage(self, msgObject):
-
-        reqBody = {
-            'from': self.paramFromId,
-            'to': msgObject.email,
-            'subject': msgObject.subject,
-            'html': msgObject.html,
-            'text': msgObject.text
+        req_body = {
+            'from': self.param_from_id,
+            'to': msg_object.email,
+            'subject': msg_object.subject,
+            'html': msg_object.html,
+            'text': msg_object.text
         }
 
-        if msgObject.delivery_time is not None:
-            reqBody['o:deliverytime'] = msgObject.delivery_time
+        if msg_object.delivery_time is not None:
+            req_body['o:deliverytime'] = msg_object.delivery_time
 
-        if msgObject.cc is not None:
-            reqBody['cc'] = msgObject.cc
+        if msg_object.cc is not None:
+            req_body['cc'] = msg_object.cc
 
-        if msgObject.bcc is not None:
-            reqBody['bcc'] = msgObject.bcc
+        if msg_object.bcc is not None:
+            req_body['bcc'] = msg_object.bcc
 
-        if msgObject.tags != []:
-            reqBody['o:tag'] = msgObject.tags
+        if msg_object.tags:
+            req_body['o:tag'] = msg_object.tags
 
-        if msgObject.custom_fields is not None:
-            reqBody = {**msgObject.custom_fields, **reqBody}
+        if msg_object.custom_fields is not None:
+            req_body = {**msg_object.custom_fields, **req_body}
 
-        logging.debug("Body:")
-        logging.debug(reqBody)
+        logging.debug(f"Body: {req_body}")
 
-        reqFiles = []
-        for path in msgObject.attachments:
+        req_files = []
+        for path in msg_object.attachments:
+            req_files += [('attachment', (os.path.basename(path).replace('_tableattachment_', ''),
+                                          open(path, 'rb').read()))]
 
-            reqFiles += [('attachment', (os.path.basename(path).replace('_tableattachment_', ''),
-                                         open(path, 'rb').read()))]
+        logging.debug(f"Attachments: {req_files}")
 
-        # logging.debug("Attachments:")
-        # logging.debug(reqFiles)
-
-        reqUrl = os.path.join(self.base_url, 'messages')
-        reqSendMessage = self.post_raw(url=reqUrl, files=reqFiles, data=reqBody)
-        messageSc, messageJs = reqSendMessage.status_code, reqSendMessage.json()
+        req_url = os.path.join(self.base_url, 'messages')
+        req_send_message = self.post_raw(req_url, files=req_files, data=req_body, is_absolute_path=True)
+        message_sc, message_js = req_send_message.status_code, req_send_message.json()
 
         logging.debug("Message response:")
-        logging.debug(messageJs)
+        logging.debug(message_js)
 
-        return messageSc, messageJs
+        return message_sc, message_js
