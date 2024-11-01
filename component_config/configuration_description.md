@@ -185,9 +185,9 @@ Note, that any of the attributes in the mailing list table can be used to fill s
 
 and following input table:
 
-| email                | subject                          | html_file      | name  | order_id |
-|----------------------|----------------------------------|----------------|-------|----------|
-| testy@mctestface.com | Your order summary #{{order_id}} | greetings.html | Testy | 12345678 |
+| email                | subject                          | html_file      | name  | order_id | product |
+|----------------------|----------------------------------|----------------|-------|----------|---------|
+| testy@mctestface.com | Your order summary #{{order_id}} | greetings.html | Testy | 12345678 |  12345  |
 
 Together, they will generate an email with the following form:
 
