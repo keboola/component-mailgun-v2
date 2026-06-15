@@ -1,1 +1,1 @@
-Mailgun is an email automation service. It offers a complete cloud-based email service for sending, receiving and tracking email sent through your websites and applications.
+Sends personalized emails to a mailing list via Mailgun.
