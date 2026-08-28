@@ -55,7 +55,7 @@ class MailgunClient(HttpClient):
                                 "retries. This is usually a temporary Mailgun outage or a network "
                                 "issue, so please try running the configuration again later. If it "
                                 "keeps failing, check that the domain name and region are correct. "
-                                f"Details: {e}") from e
+                                f"({type(e).__name__})") from e
 
         _val_sc = validation_request.status_code
 
