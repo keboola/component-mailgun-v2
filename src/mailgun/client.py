@@ -2,7 +2,7 @@ import os
 import logging
 from keboola.http_client import HttpClient
 from keboola.component.exceptions import UserException
-from requests.exceptions import JSONDecodeError
+from requests.exceptions import JSONDecodeError, RequestException
 
 
 REGION_URLS = {
@@ -42,7 +42,21 @@ class MailgunClient(HttpClient):
         req_headers = {'accept': 'application/json'}
         req_params = {'limit': 1}
 
-        validation_request = self.get_raw(req_url, headers=req_headers, params=req_params)
+        try:
+            validation_request = self.get_raw(req_url, headers=req_headers, params=req_params)
+        except RequestException as e:
+            # The underlying HttpClient already retries this call with an exponential backoff.
+            # Reaching this point therefore means the Mailgun API stayed unreachable or kept
+            # failing for the whole retry window - a transient upstream/network problem rather
+            # than a bug in the component. Surface it as a UserException so the job fails with
+            # an actionable message instead of an opaque internal error.
+            raise UserException("Could not reach the Mailgun API to verify the credentials. "
+                                "The request did not complete successfully even after several "
+                                "retries. This is usually a temporary Mailgun outage or a network "
+                                "issue, so please try running the configuration again later. If it "
+                                "keeps failing, check that the domain name and region are correct. "
+                                f"({type(e).__name__})") from e
+
         _val_sc = validation_request.status_code
 
         try:
